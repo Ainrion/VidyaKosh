@@ -1,6 +1,6 @@
 'use client'
 
-import { DashboardLayout } from '@/components/dashboard-layout'
+// DashboardLayout is now handled globally in AppLayout
 import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -90,8 +90,7 @@ export default function UsersPage() {
 
   if (profile?.role !== 'admin') {
     return (
-      <DashboardLayout>
-        <div className="p-6">
+      <div className="p-6">
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <Users className="h-12 w-12 text-gray-400 mb-4" />
@@ -101,15 +100,12 @@ export default function UsersPage() {
               </p>
             </CardContent>
           </Card>
-        </div>
-      </DashboardLayout>
-    )
+        </div>    )
   }
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
+      <div className="p-6">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded w-48 mb-6"></div>
             <div className="space-y-4">
@@ -118,14 +114,11 @@ export default function UsersPage() {
               ))}
             </div>
           </div>
-        </div>
-      </DashboardLayout>
-    )
+        </div>    )
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
+    <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
@@ -226,9 +219,7 @@ export default function UsersPage() {
             <UsersList users={usersByRole.student} onToggleStatus={toggleUserStatus} getRoleBadgeColor={getRoleBadgeColor} />
           </TabsContent>
         </Tabs>
-      </div>
-    </DashboardLayout>
-  )
+      </div>  )
 }
 
 function UsersList({ 

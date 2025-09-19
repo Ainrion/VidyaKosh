@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
-import { DashboardLayout } from '@/components/dashboard-layout'
+// DashboardLayout is now handled globally in AppLayout
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -111,8 +111,7 @@ export default function StudentExamsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
+      <div className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
             <div className="space-y-4">
@@ -121,14 +120,11 @@ export default function StudentExamsPage() {
               ))}
             </div>
           </div>
-        </div>
-      </DashboardLayout>
-    )
+        </div>    )
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Available Exams</h1>
@@ -271,7 +267,5 @@ export default function StudentExamsPage() {
           })
         )}
       </div>
-    </div>
-    </DashboardLayout>
-  )
+    </div>  )
 }

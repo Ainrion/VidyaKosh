@@ -29,8 +29,7 @@ export default function CalendarPage() {
   const canCreateEvents = profile.role === 'teacher' || profile.role === 'admin';
 
   return (
-    <DashboardLayout>
-      <div className="space-y-6">
+    <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -169,7 +168,5 @@ export default function CalendarPage() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </DashboardLayout>
-  );
+      </div>  );
 }

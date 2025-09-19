@@ -1,6 +1,6 @@
 'use client'
 
-import { DashboardLayout } from '@/components/dashboard-layout'
+// DashboardLayout is now handled globally in AppLayout
 import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -109,20 +109,16 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
+      <div className="p-6">
           <div className="flex items-center justify-center h-64">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-        </div>
-      </DashboardLayout>
-    )
+        </div>    )
   }
 
   if (!course) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
+      <div className="p-6">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Course Not Found</h1>
             <p className="text-gray-600 mb-4">The course you're looking for doesn't exist.</p>
@@ -130,15 +126,12 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
               Back to Courses
             </Button>
           </div>
-        </div>
-      </DashboardLayout>
-    )
+        </div>    )
   }
 
   if (!canEdit) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
+      <div className="p-6">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Access Denied</h1>
             <p className="text-gray-600 mb-4">You do not have permission to edit this course.</p>
@@ -146,14 +139,11 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
               Back to Course
             </Button>
           </div>
-        </div>
-      </DashboardLayout>
-    )
+        </div>    )
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
+    <div className="p-6">
         <div className="flex items-center gap-4 mb-6">
           <Button 
             variant="ghost" 
@@ -256,7 +246,5 @@ export default function EditCoursePage({ params }: { params: Promise<{ id: strin
             </div>
           </CardContent>
         </Card>
-      </div>
-    </DashboardLayout>
-  )
+      </div>  )
 }

@@ -1,9 +1,14 @@
 {
-  "name": "vidyakosh",
+  "name": "riven",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "node dev-server.js",
+    "dev:bash": "./start-dev.sh",
+    "dev:manual": "concurrently --names \"SOCKET,NEXT\" --prefix-colors \"blue,green\" \"npm run dev:socket\" \"npm run dev:next\"",
+    "dev:socket": "export $(cat .env.local | xargs) && SOCKET_PORT=3001 node server.js",
+    "dev:next": "npx next dev --port 3000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
@@ -63,6 +68,7 @@
     "@types/react-big-calendar": "^1.16.2",
     "@types/react-dom": "^19",
     "@types/socket.io": "^3.0.1",
+    "concurrently": "^9.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.4.7",
     "tailwindcss": "^4",

@@ -1,48 +1,42 @@
 'use client'
 
-import { DashboardLayout } from '@/components/dashboard-layout'
+// DashboardLayout is now handled globally in AppLayout
 import { useAuth } from '@/hooks/useAuth'
 import { useSocket } from '@/hooks/useSocket'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
-import { MessageSquare, Send, Plus, Search, Users, Wifi, WifiOff } from 'lucide-react'
+import ChatInterface from '@/components/communication/chat-interface'
+import { MessageSquare, Plus, Users, Hash, Search, MoreVertical, Bell, Settings, UserPlus, Archive, Lock, Globe } from 'lucide-react'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 
 type Channel = Database['public']['Tables']['channels']['Row']
-type Message = Database['public']['Tables']['messages']['Row'] & {
-  sender: {
-    full_name: string
-    avatar_url?: string
-  }
-}
 
 export default function MessagesPage() {
   const { profile } = useAuth()
-  const { 
-    isConnected, 
-    joinChannel, 
-    leaveChannel, 
-    sendMessage: socketSendMessage, 
-    messages: socketMessages,
-    typingUsers,
-    startTyping,
-    stopTyping 
-  } = useSocket()
+  const { isConnected } = useSocket()
   
   const [channels, setChannels] = useState<Channel[]>([])
   const [selectedChannel, setSelectedChannel] = useState<Channel | null>(null)
-  const [newMessage, setNewMessage] = useState('')
   const [loading, setLoading] = useState(true)
   const [showCreateChannel, setShowCreateChannel] = useState(false)
   const [newChannelName, setNewChannelName] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   
   // Create supabase client once and memoize it
   const supabase = useMemo(() => createClient(), [])
+
+  // Filter channels based on search query
+  const filteredChannels = useMemo(() => {
+    if (!searchQuery.trim()) return channels
+    return channels.filter(channel => 
+      channel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      channel.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  }, [channels, searchQuery])
 
   const fetchChannels = useCallback(async () => {
     if (!profile?.school_id) {
@@ -53,18 +47,44 @@ export default function MessagesPage() {
 
     try {
       console.log('Fetching channels for school:', profile.school_id)
+      
+      // First check if messaging tables exist
+      const { data: tableStatus, error: statusError } = await supabase
+        .rpc('check_messaging_tables')
+
+      if (statusError) {
+        console.error('Error checking table status:', statusError)
+        setChannels([])
+        setLoading(false)
+        return
+      }
+
+      console.log('Table status:', tableStatus)
+
+      if (!tableStatus?.channels_exists) {
+        console.log('Channels table does not exist')
+        setChannels([])
+        setLoading(false)
+        return
+      }
+
       const { data, error } = await supabase
         .from('channels')
         .select('*')
         .eq('school_id', profile.school_id)
-        .order('name')
+        .order('created_at', { ascending: true })
 
       if (error) {
-        console.error('Error fetching channels:', error)
+        console.error('Error fetching channels:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
         throw error
       }
-      
-      console.log('Channels fetched:', data)
+
+      console.log('Fetched channels:', data)
       setChannels(data || [])
       
       // Auto-select first channel if none selected
@@ -72,335 +92,433 @@ export default function MessagesPage() {
         setSelectedChannel(data[0])
       }
     } catch (error) {
-      console.error('Error fetching channels:', error)
+      console.error('Failed to fetch channels:', {
+        message: error.message,
+        stack: error.stack
+      })
+      setChannels([])
     } finally {
       setLoading(false)
     }
   }, [profile?.school_id, supabase, selectedChannel])
 
-  // Handle channel selection
-  useEffect(() => {
-    if (selectedChannel) {
-      joinChannel(selectedChannel.id)
-    }
-    return () => {
-      if (selectedChannel) {
-        leaveChannel(selectedChannel.id)
-      }
-    }
-  }, [selectedChannel, joinChannel, leaveChannel])
 
-  // Fetch channels when profile changes
   useEffect(() => {
     if (profile?.school_id) {
       fetchChannels()
+    } else {
+      setLoading(false)
     }
   }, [profile?.school_id, fetchChannels])
 
-  // Handle typing indicators
-  const handleTyping = useCallback(() => {
-    if (!isTyping && selectedChannel) {
-      setIsTyping(true)
-      startTyping(selectedChannel.id)
-      
-      // Stop typing after 3 seconds of inactivity
-      setTimeout(() => {
-        setIsTyping(false)
-        stopTyping(selectedChannel.id)
-      }, 3000)
-    }
-  }, [isTyping, selectedChannel, startTyping, stopTyping])
-
-  const sendMessage = useCallback(async (e: React.FormEvent) => {
+  const createChannel = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!selectedChannel || !newMessage.trim() || !profile) return
-
-    const messageContent = newMessage.trim()
-    setNewMessage('') // Clear immediately for better UX
-    setIsTyping(false)
-    stopTyping(selectedChannel.id)
-
-    try {
-      const success = await socketSendMessage(selectedChannel.id, messageContent)
-      if (!success) {
-        // Restore message on error
-        setNewMessage(messageContent)
-      }
-    } catch (error) {
-      console.error('Error sending message:', error)
-      setNewMessage(messageContent) // Restore message on error
+    if (!newChannelName.trim() || !profile?.school_id) {
+      console.error('Cannot create channel: Missing channel name or school_id')
+      return
     }
-  }, [selectedChannel, newMessage, profile, socketSendMessage, stopTyping])
-
-  const createGeneralChannel = useCallback(async () => {
-    if (!profile?.school_id) return
 
     try {
-      const { error } = await supabase
+      console.log('Creating channel:', newChannelName.trim(), 'for school:', profile.school_id)
+
+      const { data, error } = await supabase
         .from('channels')
         .insert({
-          school_id: profile.school_id,
-          name: 'General',
-          is_private: false
-        })
-
-      if (error) throw error
-      fetchChannels()
-    } catch (error) {
-      console.error('Error creating channel:', error)
-    }
-  }, [profile?.school_id, supabase, fetchChannels])
-
-  const createChannel = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!profile?.school_id || !newChannelName.trim()) return
-
-    try {
-      const { error } = await supabase
-        .from('channels')
-        .insert({
-          school_id: profile.school_id,
           name: newChannelName.trim(),
+          school_id: profile.school_id,
+          created_by: profile.id,
           is_private: false
         })
+        .select()
+        .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Error creating channel:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        throw error
+      }
+
+      console.log('Channel created successfully:', data)
+      setChannels(prev => [...prev, data])
       setNewChannelName('')
       setShowCreateChannel(false)
-      fetchChannels()
+      setSelectedChannel(data)
     } catch (error) {
-      console.error('Error creating channel:', error)
+      console.error('Error creating channel:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      })
     }
-  }, [profile?.school_id, newChannelName, supabase, fetchChannels])
+  }
+
+  const createGeneralChannel = async () => {
+    if (!profile?.school_id) {
+      console.error('Cannot create channel: No school_id in profile')
+      return
+    }
+
+    try {
+      console.log('Creating general channel for school:', profile.school_id)
+      
+      // First check if user has permissions and get detailed info
+      const { data: userInfo, error: userError } = await supabase
+        .rpc('get_user_school_info')
+
+      if (userError) {
+        console.error('Error getting user info:', userError)
+        return
+      }
+
+      console.log('User info:', userInfo)
+
+      // Use the database function to create the channel
+      const { data: result, error } = await supabase
+        .rpc('create_general_channel', { school_uuid: profile.school_id })
+
+      if (error) {
+        console.error('Database function error:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        })
+        return
+      }
+
+      console.log('Channel creation result:', result)
+
+      if (result.error) {
+        console.error('Channel creation failed:', result.error)
+        return
+      }
+
+      if (result.success && result.channel) {
+        console.log('General channel created successfully:', result.channel)
+        setChannels([result.channel])
+        setSelectedChannel(result.channel)
+      }
+    } catch (error) {
+      console.error('Error creating general channel:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      })
+    }
+  }
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
-          <div className="animate-pulse">
-            <div className="h-8 bg-gray-200 rounded w-48 mb-6"></div>
-            <div className="grid grid-cols-4 gap-6 h-96">
-              <div className="bg-gray-200 rounded"></div>
-              <div className="col-span-3 bg-gray-200 rounded"></div>
-            </div>
-          </div>
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-indigo-500 border-t-transparent mx-auto mb-6"></div>
+          <p className="text-xl font-semibold text-gray-700">Loading messages...</p>
+          <p className="text-sm text-gray-500 mt-2">Setting up your workspace</p>
         </div>
-      </DashboardLayout>
+      </div>
     )
   }
 
-  // If user has no school assigned
   if (!profile?.school_id) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
-              <p className="text-gray-600 mt-1">Communicate with your school community</p>
-            </div>
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-lg mx-auto p-8">
+          <div className="h-24 w-24 rounded-3xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-8">
+            <MessageSquare className="h-12 w-12 text-gray-400" />
           </div>
-          
-          <Card className="p-8 text-center">
-            <MessageSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">School Assignment Required</h3>
-            <p className="text-gray-600 mb-4">
-              You need to be assigned to a school before you can access messages. 
-              Your profile shows: {profile?.full_name} ({profile?.role})
+          <h3 className="text-2xl font-bold text-gray-900 mb-4">
+            School Assignment Required
+          </h3>
+          <p className="text-gray-600 mb-6 text-lg leading-relaxed">
+            You need to be assigned to a school before you can access messages. 
+            Your profile shows: {profile?.full_name} ({profile?.role})
+          </p>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-500 font-medium">
+              School ID: {profile?.school_id || 'Not assigned'}
             </p>
-            <div className="space-y-2">
-              <p className="text-sm text-gray-500">
-                School ID: {profile?.school_id || 'Not assigned'}
-              </p>
-              <Button onClick={() => window.location.href = '/profile'}>
-                View Profile
-              </Button>
-            </div>
-          </Card>
+            <Button 
+              onClick={() => window.location.href = '/profile'}
+              className="h-12 px-8 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              View Profile
+            </Button>
+          </div>
         </div>
-      </DashboardLayout>
+      </div>
     )
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Messages</h1>
-            <p className="text-gray-600 mt-1">Communicate with your school community</p>
+    <div className="h-screen flex flex-col bg-gray-50">
+      {/* Modern Header */}
+      <div className="flex-none bg-white shadow-sm border-b border-gray-100">
+        <div className="px-8 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center space-x-4">
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg">
+                  <MessageSquare className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Messages</h1>
+                  <div className="flex items-center gap-3 mt-1">
+                    <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${
+                      isConnected 
+                        ? 'bg-green-50 text-green-700 border border-green-200' 
+                        : 'bg-red-50 text-red-700 border border-red-200'
+                    }`}>
+                      <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                      {isConnected ? 'Online' : 'Connecting...'}
+                    </div>
+                    <span className="text-sm text-gray-500 font-medium">
+                      {channels.length} {channels.length === 1 ? 'channel' : 'channels'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-gray-100 rounded-xl">
+                <Bell className="h-5 w-5 text-gray-600" />
+              </Button>
+              <Button variant="ghost" size="sm" className="h-10 w-10 p-0 hover:bg-gray-100 rounded-xl">
+                <Settings className="h-5 w-5 text-gray-600" />
+              </Button>
+              {(profile?.role === 'admin' || profile?.role === 'teacher') && (
+                <Button 
+                  onClick={() => setShowCreateChannel(true)}
+                  className="h-10 px-6 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-medium rounded-xl shadow-lg hover:shadow-xl transition-all duration-200"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Channel
+                </Button>
+              )}
+            </div>
           </div>
         </div>
+      </div>
 
-        <div className="grid grid-cols-4 gap-6 h-[calc(100vh-200px)]">
-          {/* Channels Sidebar */}
-          <div className="col-span-1">
-            <Card className="h-full">
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg">Channels</CardTitle>
-                  {profile?.role === 'admin' && (
-                    <Button 
-                      size="sm" 
-                      variant="outline"
-                      onClick={() => setShowCreateChannel(true)}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  )}
+      {/* Main Content Area */}
+      <div className="flex-1 flex min-h-0">
+        {/* Modern Sidebar */}
+        <div className={`flex-none bg-white border-r border-gray-100 transition-all duration-300 shadow-sm ${
+          sidebarCollapsed ? 'w-16' : 'w-80'
+        }`}>
+          {!sidebarCollapsed && (
+            <div className="h-full flex flex-col">
+              {/* Search Section */}
+              <div className="p-6 border-b border-gray-100">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                  <Input
+                    placeholder="Search channels..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-12 h-12 bg-gray-50 border-gray-200 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl text-sm font-medium"
+                  />
                 </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                {showCreateChannel && (
-                  <div className="p-4 border-b">
-                    <form onSubmit={createChannel} className="space-y-3">
-                      <Input
-                        value={newChannelName}
-                        onChange={(e) => setNewChannelName(e.target.value)}
-                        placeholder="Channel name..."
-                        className="text-sm"
-                        autoFocus
-                      />
-                      <div className="flex gap-2">
-                        <Button type="submit" size="sm" disabled={!newChannelName.trim()}>
-                          Create
-                        </Button>
-                        <Button 
-                          type="button" 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => {
-                            setShowCreateChannel(false)
-                            setNewChannelName('')
-                          }}
-                        >
-                          Cancel
-                        </Button>
+              </div>
+
+              {/* Create Channel Form */}
+              {showCreateChannel && (
+                <div className="p-6 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100">
+                  <form onSubmit={createChannel} className="space-y-4">
+                    <div className="flex items-center gap-3 text-sm font-semibold text-indigo-800">
+                      <div className="h-8 w-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+                        <Hash className="h-4 w-4 text-indigo-600" />
                       </div>
-                    </form>
+                      Create New Channel
+                    </div>
+                    <Input
+                      value={newChannelName}
+                      onChange={(e) => setNewChannelName(e.target.value)}
+                      placeholder="Enter channel name..."
+                      className="h-12 bg-white border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500 rounded-xl font-medium"
+                      autoFocus
+                    />
+                    <div className="flex gap-3">
+                      <Button 
+                        type="submit" 
+                        size="sm" 
+                        disabled={!newChannelName.trim()}
+                        className="h-10 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl"
+                      >
+                        Create Channel
+                      </Button>
+                      <Button 
+                        type="button" 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => {
+                          setShowCreateChannel(false)
+                          setNewChannelName('')
+                        }}
+                        className="h-10 px-6 border-indigo-200 text-indigo-600 hover:bg-indigo-50 rounded-xl"
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Channels List */}
+              <div className="flex-1 overflow-y-auto">
+                {loading ? (
+                  <div className="p-8 text-center">
+                    <div className="animate-spin rounded-full h-10 w-10 border-3 border-indigo-500 border-t-transparent mx-auto mb-4"></div>
+                    <p className="text-sm font-medium text-gray-600">Loading channels...</p>
                   </div>
-                )}
-                {channels.length === 0 ? (
-                  <div className="p-4 text-center">
-                    <MessageSquare className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500 mb-3">No channels yet</p>
-                    {profile?.role === 'admin' && (
-                      <Button size="sm" onClick={createGeneralChannel}>
-                        Create General Channel
+                ) : filteredChannels.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center mx-auto mb-4">
+                      <MessageSquare className="h-8 w-8 text-gray-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                      {searchQuery ? 'No channels found' : 'No channels yet'}
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-6 max-w-xs mx-auto">
+                      {searchQuery 
+                        ? 'Try adjusting your search terms'
+                        : 'Create your first channel to get started'
+                      }
+                    </p>
+                    {!searchQuery && (profile?.role === 'admin' || profile?.role === 'teacher') && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowCreateChannel(true)}
+                        className="h-10 px-6 border-indigo-200 text-indigo-600 hover:bg-indigo-50 rounded-xl font-medium"
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Channel
                       </Button>
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-1">
-                    {channels.map((channel) => (
-                      <button
-                        key={channel.id}
-                        onClick={() => setSelectedChannel(channel)}
-                        className={`w-full text-left px-4 py-2 hover:bg-gray-50 transition-colors ${
-                          selectedChannel?.id === channel.id ? 'bg-blue-50 border-r-2 border-blue-500' : ''
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4 text-gray-400" />
-                          <span className="font-medium">{channel.name || 'Unnamed Channel'}</span>
-                        </div>
-                      </button>
-                    ))}
+                  <div className="p-4">
+                    <div className="space-y-2">
+                      {filteredChannels.map((channel) => (
+                        <button
+                          key={channel.id}
+                          onClick={() => setSelectedChannel(channel)}
+                          className={`w-full text-left p-4 rounded-2xl transition-all duration-200 group ${
+                            selectedChannel?.id === channel.id
+                              ? 'bg-gradient-to-r from-indigo-50 to-purple-50 border-2 border-indigo-200 shadow-md'
+                              : 'hover:bg-gray-50 hover:shadow-sm border-2 border-transparent'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-4 flex-1 min-w-0">
+                              <div className={`h-3 w-3 rounded-full ${
+                                selectedChannel?.id === channel.id ? 'bg-indigo-500' : 'bg-gray-300'
+                              }`}></div>
+                              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                <div className={`h-8 w-8 rounded-xl flex items-center justify-center ${
+                                  channel.is_private 
+                                    ? 'bg-red-100 text-red-600' 
+                                    : 'bg-indigo-100 text-indigo-600'
+                                }`}>
+                                  {channel.is_private ? (
+                                    <Lock className="h-4 w-4" />
+                                  ) : (
+                                    <Hash className="h-4 w-4" />
+                                  )}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <span className={`font-semibold text-base truncate block ${
+                                    selectedChannel?.id === channel.id ? 'text-indigo-900' : 'text-gray-900'
+                                  }`}>
+                                    {channel.name}
+                                  </span>
+                                  {channel.description && (
+                                    <p className={`text-sm mt-1 truncate ${
+                                      selectedChannel?.id === channel.id ? 'text-indigo-700' : 'text-gray-500'
+                                    }`}>
+                                      {channel.description}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <MoreVertical className="h-5 w-5 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+              </div>
 
-          {/* Messages Area */}
-          <div className="col-span-3">
-            <Card className="h-full flex flex-col">
-              {selectedChannel ? (
-                <>
-              <CardHeader className="border-b">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
-                  <CardTitle>{selectedChannel.name || 'Unnamed Channel'}</CardTitle>
-                  <div className="flex items-center gap-1 ml-auto">
-                    {isConnected ? (
-                      <Wifi className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <WifiOff className="h-4 w-4 text-red-500" />
-                    )}
-                    <span className={`text-xs ${isConnected ? 'text-green-600' : 'text-red-600'}`}>
-                      {isConnected ? 'Connected' : 'Disconnected'}
-                    </span>
-                  </div>
+              {/* Sidebar Footer */}
+              <div className="p-6 border-t border-gray-100 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">
+                    {filteredChannels.length} {filteredChannels.length === 1 ? 'channel' : 'channels'}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSidebarCollapsed(true)}
+                    className="h-8 w-8 p-0 hover:bg-gray-200 rounded-lg"
+                  >
+                    <Archive className="h-4 w-4 text-gray-500" />
+                  </Button>
                 </div>
-                {Object.keys(typingUsers).length > 0 && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    {Object.values(typingUsers).join(', ')} {Object.keys(typingUsers).length === 1 ? 'is' : 'are'} typing...
-                  </div>
-                )}
-              </CardHeader>                  {/* Messages */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {socketMessages.length === 0 ? (
-                      <div className="text-center text-gray-500 mt-8">
-                        <MessageSquare className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                        <p>No messages yet. Start the conversation!</p>
-                      </div>
-                    ) : (
-                      socketMessages.map((message) => (
-                        <div key={message.id} className="flex gap-3">
-                          <div className="flex-shrink-0">
-                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
-                              {message.sender?.full_name?.charAt(0).toUpperCase() || '?'}
-                            </div>
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-sm">{message.sender?.full_name}</span>
-                              <span className="text-xs text-gray-500">
-                                {new Date(message.sent_at).toLocaleTimeString()}
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-700">{message.content}</p>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
+              </div>
+            </div>
+          )}
 
-                  {/* Message Input */}
-                  <div className="border-t p-4">
-                    <form onSubmit={sendMessage} className="flex gap-2">
-                      <Input
-                        value={newMessage}
-                        onChange={(e) => {
-                          setNewMessage(e.target.value)
-                          handleTyping()
-                        }}
-                        placeholder="Type a message..."
-                        className="flex-1"
-                        disabled={!isConnected}
-                      />
-                      <Button 
-                        type="submit" 
-                        disabled={!newMessage.trim() || !isConnected}
-                      >
-                        <Send className="h-4 w-4" />
-                      </Button>
-                    </form>
-                  </div>
-                </>
-              ) : (
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="text-center text-gray-500">
-                    <MessageSquare className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-                    <p className="text-lg font-medium mb-2">Select a channel</p>
-                    <p>Choose a channel from the sidebar to start messaging</p>
-                  </div>
-                </div>
-              )}
-            </Card>
-          </div>
+          {/* Collapsed Sidebar */}
+          {sidebarCollapsed && (
+            <div className="h-full flex flex-col items-center py-6">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarCollapsed(false)}
+                className="mb-6 h-10 w-10 p-0 hover:bg-gray-100 rounded-xl"
+              >
+                <MessageSquare className="h-5 w-5 text-gray-600" />
+              </Button>
+              <div className="flex-1 flex flex-col items-center space-y-3">
+                {channels.slice(0, 5).map((channel) => (
+                  <Button
+                    key={channel.id}
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedChannel(channel)}
+                    className={`h-10 w-10 p-0 rounded-xl ${
+                      selectedChannel?.id === channel.id 
+                        ? 'bg-indigo-100 text-indigo-600' 
+                        : 'hover:bg-gray-100 text-gray-500'
+                    }`}
+                  >
+                    {channel.is_private ? (
+                      <Lock className="h-4 w-4" />
+                    ) : (
+                      <Hash className="h-4 w-4" />
+                    )}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Enhanced Chat Interface */}
+        <div className="flex-1 min-w-0">
+          <ChatInterface 
+            selectedChannel={selectedChannel}
+            onChannelSelect={setSelectedChannel}
+          />
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   )
 }

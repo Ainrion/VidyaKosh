@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
-import { DashboardLayout } from '@/components/dashboard-layout'
+// DashboardLayout is now handled globally in AppLayout
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -158,8 +158,7 @@ export default function SchoolsPage() {
 
   if (profile?.role !== 'admin') {
     return (
-      <DashboardLayout>
-        <div className="p-6">
+      <div className="p-6">
           <div className="text-center">
             <Building2 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
@@ -167,14 +166,11 @@ export default function SchoolsPage() {
               You need administrator privileges to access school management.
             </p>
           </div>
-        </div>
-      </DashboardLayout>
-    )
+        </div>    )
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
+    <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">School Management</h1>
@@ -404,7 +400,5 @@ export default function SchoolsPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
-    </DashboardLayout>
-  )
+      </div>  )
 }

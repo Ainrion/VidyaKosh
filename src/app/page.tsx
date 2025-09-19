@@ -4,122 +4,252 @@ import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { BookOpen, Users, MessageSquare, BarChart3, ArrowRight, GraduationCap, Award, Clock, Target, Calculator, Globe, Atom, Microscope, PenTool, Lightbulb, Brain, Compass, Beaker, Ruler, Palette, Star, TrendingUp } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { 
+  BookOpen, 
+  Users, 
+  MessageSquare, 
+  BarChart3, 
+  ArrowRight, 
+  GraduationCap, 
+  Award, 
+  Shield, 
+  Zap,
+  CheckCircle,
+  Star,
+  School,
+  Mail,
+  PlayCircle
+} from 'lucide-react'
 import Link from 'next/link'
-import { motion, useScroll, useTransform, AnimatePresence, useInView } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 
-  // Animation variants
-  const fadeInUp = {
-    initial: { opacity: 0, y: 60 },
+// Simplified animation variants for better performance
+const fadeIn = {
+  initial: { opacity: 0, y: 20 },
     animate: { opacity: 1, y: 0 },
-  }
-
-  const staggerContainer = {
-    animate: {
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  }
-
-const floatingAnimation = {
-  y: [-10, 10, -10],
-  transition: {
-    duration: 6,
-    repeat: Infinity,
-    ease: [0.4, 0, 0.6, 1] as const
-  }
+  transition: { duration: 0.5 }
 }
 
-// Educational symbols and formulas for background
-const educationalElements = [
-  { symbol: "∑", style: "text-6xl font-bold", position: "top-20 left-20" },
-  { symbol: "π", style: "text-5xl font-bold", position: "top-40 right-32" },
-  { symbol: "∫", style: "text-7xl font-bold", position: "top-60 left-1/4" },
-  { symbol: "α", style: "text-4xl font-bold", position: "top-80 right-20" },
-  { symbol: "β", style: "text-5xl font-bold", position: "bottom-80 left-16" },
-  { symbol: "∞", style: "text-6xl font-bold", position: "bottom-60 right-1/4" },
-  { symbol: "√", style: "text-5xl font-bold", position: "bottom-40 left-1/3" },
-  { symbol: "Δ", style: "text-6xl font-bold", position: "bottom-20 right-16" },
-  { symbol: "A", style: "text-7xl font-serif font-bold", position: "top-32 left-1/2" },
-  { symbol: "B", style: "text-6xl font-serif font-bold", position: "top-96 right-1/3" },
-  { symbol: "x²", style: "text-4xl font-bold", position: "top-52 right-48" },
-  { symbol: "E=mc²", style: "text-3xl font-bold", position: "bottom-52 left-48" },
-  { symbol: "θ", style: "text-5xl font-bold", position: "top-72 left-16" },
-  { symbol: "φ", style: "text-4xl font-bold", position: "bottom-72 right-32" },
-  { symbol: "∇", style: "text-5xl font-bold", position: "top-44 left-2/3" },
-  { symbol: "ω", style: "text-4xl font-bold", position: "bottom-44 right-2/3" }
-]
+// School Registration Form Component
+const SchoolRegistrationForm = ({ onClose }: { onClose: () => void }) => {
+  const [formData, setFormData] = useState({
+    schoolName: '',
+    adminName: '',
+    adminEmail: '',
+    phone: '',
+    address: '',
+    password: '',
+    confirmPassword: ''
+  })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const router = useRouter()
 
-// Educational icons for animated background
-const educationalIcons = [
-  { Icon: Calculator, size: 32, delay: 0.1 },
-  { Icon: Globe, size: 28, delay: 0.3 },
-  { Icon: Atom, size: 36, delay: 0.5 },
-  { Icon: Microscope, size: 30, delay: 0.7 },
-  { Icon: PenTool, size: 26, delay: 0.9 },
-  { Icon: Lightbulb, size: 34, delay: 1.1 },
-  { Icon: Brain, size: 32, delay: 1.3 },
-  { Icon: Compass, size: 28, delay: 1.5 },
-  { Icon: Beaker, size: 30, delay: 1.7 },
-  { Icon: Ruler, size: 26, delay: 1.9 },
-  { Icon: Palette, size: 32, delay: 2.1 },
-  { Icon: Star, size: 24, delay: 2.3 },
-  { Icon: BookOpen, size: 30, delay: 2.5 },
-  { Icon: Award, size: 28, delay: 2.7 },
-  { Icon: Target, size: 32, delay: 2.9 }
-]
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+    
+    setLoading(true)
+    setError('')
 
-// Typewriter Effect Component
-const TypewriterText = ({ text, delay = 0 }: { text: string; delay?: number }) => {
-  const [displayText, setDisplayText] = useState('')
-  const [currentIndex, setCurrentIndex] = useState(0)
+    try {
+      // First create the school using public API
+      const schoolResponse = await fetch('/api/schools/public', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.schoolName,
+          address: formData.address,
+          phone: formData.phone,
+          email: formData.adminEmail
+        })
+      })
 
-  useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      if (currentIndex < text.length) {
-        setDisplayText(prev => prev + text[currentIndex])
-        setCurrentIndex(prev => prev + 1)
+      const schoolData = await schoolResponse.json()
+
+      if (!schoolResponse.ok) {
+        throw new Error(schoolData.error || 'Failed to create school')
       }
-    }, 100 + delay)
 
-    return () => clearTimeout(timeoutId)
-  }, [currentIndex, text, delay])
+      // Then signup the admin user
+      const signupResponse = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.adminEmail,
+          password: formData.password,
+          fullName: formData.adminName,
+          role: 'admin',
+          schoolName: formData.schoolName,
+          schoolId: schoolData.school.id
+        })
+      })
+
+      const signupData = await signupResponse.json()
+
+      if (!signupResponse.ok) {
+        throw new Error(signupData.error || 'Signup failed')
+      }
+
+      // Success - redirect to login with success message
+      router.push('/login?message=' + encodeURIComponent('Registration successful! Please check your email to verify your account and complete the setup.'))
+    } catch (error: any) {
+      console.error('Registration error:', error)
+      setError(error.message || 'Registration failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <span>
-      {displayText}
-      <motion.span
-        animate={{ opacity: [1, 0, 1] }}
-        transition={{ duration: 1, repeat: Infinity }}
-        className="text-indigo-600"
-      >
-        |
-      </motion.span>
-    </span>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center space-x-3">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <School className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Register Your School</h2>
+              <p className="text-gray-600">Start your educational transformation today</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={onClose}>✕</Button>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="schoolName">School Name <span className="text-red-500">*</span></Label>
+              <Input
+                id="schoolName"
+                type="text"
+                value={formData.schoolName}
+                onChange={(e) => setFormData(prev => ({ ...prev, schoolName: e.target.value }))}
+                placeholder="Enter your school name"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="adminName">Administrator Name <span className="text-red-500">*</span></Label>
+              <Input
+                id="adminName"
+                type="text"
+                value={formData.adminName}
+                onChange={(e) => setFormData(prev => ({ ...prev, adminName: e.target.value }))}
+                placeholder="Enter admin full name"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="adminEmail">Administrator Email <span className="text-red-500">*</span></Label>
+              <Input
+                id="adminEmail"
+                type="email"
+                value={formData.adminEmail}
+                onChange={(e) => setFormData(prev => ({ ...prev, adminEmail: e.target.value }))}
+                placeholder="admin@yourschool.edu"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="+1 (555) 123-4567"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="address">School Address</Label>
+            <Input
+              id="address"
+              type="text"
+              value={formData.address}
+              onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+              placeholder="Enter your school address"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-2">
+              <Label htmlFor="password">Password <span className="text-red-500">*</span></Label>
+              <Input
+                id="password"
+                type="password"
+                value={formData.password}
+                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                placeholder="Create a strong password"
+                required
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password <span className="text-red-500">*</span></Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                placeholder="Confirm your password"
+                required
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 pt-6">
+            <Button
+              type="submit"
+              className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3"
+              disabled={loading}
+            >
+              {loading ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Creating School...</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <School className="h-4 w-4" />
+                  <span>Register School</span>
+                </div>
+              )}
+            </Button>
+            <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
   )
 }
 
 export default function Home() {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 })
-  const { scrollY } = useScroll()
-  
-  // Parallax transforms
-  const y1 = useTransform(scrollY, [0, 300], [0, -50])
-  const y2 = useTransform(scrollY, [0, 300], [0, -100])
-  const opacity = useTransform(scrollY, [0, 200], [1, 0.8])
-
-  // Mouse tracking
-  useEffect(() => {
-    const updateMousePosition = (e: MouseEvent) => {
-      setMousePosition({ x: e.clientX, y: e.clientY })
-    }
-    window.addEventListener('mousemove', updateMousePosition)
-    return () => window.removeEventListener('mousemove', updateMousePosition)
-  }, [])
+  const [showRegistration, setShowRegistration] = useState(false)
 
   useEffect(() => {
     if (!loading && user) {
@@ -127,82 +257,13 @@ export default function Home() {
     }
   }, [user, loading, router])
 
-  // Animation variants
-  const fadeInUp = {
-    initial: { opacity: 0, y: 60 },
-    animate: { opacity: 1, y: 0 },
-  }
-
-  const staggerContainer = {
-    animate: {
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  }
-
-  const hoverScale = {
-    scale: 1.05,
-    rotateY: 10,
-    z: 50,
-    transition: {
-      duration: 0.3,
-      ease: "easeOut"
-    }
-  }
-
-  const cardVariants = {
-    initial: { opacity: 0, y: 50, scale: 0.9 },
-    animate: { 
-      opacity: 1, 
-      y: 0, 
-      scale: 1,
-      transition: {
-        duration: 0.6,
-        ease: [0.25, 0.46, 0.45, 0.94]
-      }
-    },
-    hover: {
-      y: -10,
-      scale: 1.03,
-      boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
-      transition: {
-        duration: 0.3,
-        ease: "easeOut"
-      }
-    }
-  }
-
-  const buttonVariants = {
-    initial: { scale: 1 },
-    hover: { 
-      scale: 1.05,
-      boxShadow: "0 10px 30px rgba(99, 102, 241, 0.3)",
-      transition: {
-        duration: 0.2,
-        ease: "easeOut"
-      }
-    },
-    tap: { 
-      scale: 0.95,
-      transition: {
-        duration: 0.1
-      }
-    }
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-        <motion.div 
-          className="text-center"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-2 text-gray-600">Loading...</p>
-        </motion.div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 font-medium">Loading Riven...</p>
+        </div>
       </div>
     )
   }
@@ -211,679 +272,408 @@ export default function Home() {
     return null // Will redirect to dashboard
   }
 
+  const features = [
+    {
+      icon: BookOpen,
+      title: 'Course Management',
+      description: 'Create, organize, and deliver engaging courses with multimedia content and interactive assessments.'
+    },
+    {
+      icon: Users,
+      title: 'Student Engagement',
+      description: 'Foster collaboration with discussion forums, group projects, and peer-to-peer learning.'
+    },
+    {
+      icon: BarChart3,
+      title: 'Analytics & Insights',
+      description: 'Track student progress with detailed analytics and generate comprehensive performance reports.'
+    },
+    {
+      icon: MessageSquare,
+      title: 'Real-time Communication',
+      description: 'Connect instantly with built-in messaging, video calls, and live classroom sessions.'
+    },
+    {
+      icon: Award,
+      title: 'Assessment Tools',
+      description: 'Create quizzes, assignments, and exams with automated grading and instant feedback.'
+    },
+    {
+      icon: Shield,
+      title: 'Secure & Private',
+      description: 'Enterprise-grade security with role-based access control and data privacy compliance.'
+    }
+  ]
+
+  const pricingPlans = [
+    {
+      name: 'Starter',
+      price: '49',
+      period: 'month',
+      description: 'Perfect for small schools getting started',
+      features: [
+        'Up to 100 students',
+        '5 courses',
+        'Basic analytics',
+        'Email support',
+        'Mobile app access'
+      ],
+      popular: false
+    },
+    {
+      name: 'Professional',
+      price: '149',
+      period: 'month',
+      description: 'Ideal for growing educational institutions',
+      features: [
+        'Up to 500 students',
+        'Unlimited courses',
+        'Advanced analytics',
+        'Priority support',
+        'Custom branding',
+        'API access',
+        'Integrations'
+      ],
+      popular: true
+    },
+    {
+      name: 'Enterprise',
+      price: 'Custom',
+      period: '',
+      description: 'For large institutions with specific needs',
+      features: [
+        'Unlimited students',
+        'Unlimited courses',
+        'Custom analytics',
+        '24/7 phone support',
+        'White-label solution',
+        'Custom integrations',
+        'Dedicated success manager'
+      ],
+      popular: false
+    }
+  ]
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 relative overflow-hidden">
-      {/* Mouse Follower */}
-      <motion.div
-        className="fixed w-6 h-6 bg-indigo-400/20 rounded-full pointer-events-none z-50 mix-blend-difference"
-        animate={{
-          x: mousePosition.x - 12,
-          y: mousePosition.y - 12,
-        }}
-        transition={{
-          type: "spring",
-          damping: 30,
-          stiffness: 200,
-          restDelta: 0.001
-        }}
-      />
-
-      {/* Educational Background Elements with Parallax */}
-      <motion.div 
-        className="absolute inset-0 overflow-hidden pointer-events-none"
-        style={{ y: y1, opacity }}
-      >
-        {educationalElements.map((element, index) => (
-          <motion.div
-            key={index}
-            className={`absolute ${element.position} ${element.style} text-indigo-100/30 select-none`}
-            animate={{
-              y: [-10, 10, -10],
-            }}
-            transition={{
-              ...floatingAnimation.transition,
-              delay: index * 0.5,
-              duration: 4 + (index % 3) * 2
-            }}
-          >
-            {element.symbol}
-          </motion.div>
-        ))}
-        
-        {/* Geometric shapes */}
-        <motion.div
-          className="absolute top-1/4 right-1/4 w-32 h-32 border-2 border-indigo-200/40 rounded-full"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-        />
-                <motion.div
-          className="absolute bottom-1/3 left-1/3 w-24 h-24 border-2 border-purple-200/40 rotate-45"
-          animate={{ 
-            rotate: [45, 405, 45],
-            scale: [1, 1.1, 1]
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
-        />
-
-        {/* Animated Educational Icons */}
-        {educationalIcons.map((item, index) => {
-          const { Icon } = item;
-          return (
-            <motion.div
-              key={`icon-${index}`}
-              className="absolute text-indigo-300/40"
-              style={{
-                left: `${(index * 117 + 73) % 90 + 5}%`,
-                top: `${(index * 89 + 47) % 80 + 10}%`,
-              }}
-              animate={{
-                x: [0, 20, -10, 0],
-                y: [0, -15, 10, 0],
-                rotate: [0, 10, -5, 0],
-                scale: [1, 1.1, 0.9, 1],
-              }}
-              transition={{
-                duration: 8 + (index % 4),
-                repeat: Infinity,
-                ease: [0.4, 0, 0.6, 1] as const,
-                delay: item.delay
-              }}
-            >
-              <Icon size={item.size} />
-            </motion.div>
-          )
-        })}
-
-        {/* Additional Floating Educational Elements */}
-        <motion.div
-          className="absolute top-1/6 left-1/6 text-indigo-200/30"
-          animate={{
-            rotate: [0, 360],
-            scale: [1, 1.2, 1],
-          }}
-          transition={{
-            duration: 12,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        >
-          <GraduationCap size={40} />
-        </motion.div>
-
-        <motion.div
-          className="absolute top-2/3 right-1/6 text-purple-200/30"
-          animate={{
-            y: [-20, 20, -20],
-            rotate: [0, -10, 10, 0],
-          }}
-          transition={{
-            duration: 10,
-            repeat: Infinity,
-            ease: [0.4, 0, 0.6, 1] as const
-          }}
-        >
-          <TrendingUp size={35} />
-        </motion.div>
-
-        <motion.div
-          className="absolute bottom-1/4 left-1/2 text-indigo-200/25"
-          animate={{
-            scale: [1, 1.3, 1],
-            opacity: [0.3, 0.6, 0.3],
-          }}
-          transition={{
-            duration: 8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        >
-          <Lightbulb size={38} />
-        </motion.div>
-
-        {/* Orbiting Educational Elements */}
-        <motion.div
-          className="absolute top-1/3 right-1/3"
-          animate={{ rotate: 360 }}
-          transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-        >
-          <div className="relative w-20 h-20">
-            <motion.div
-              className="absolute inset-0 text-blue-300/30"
-              animate={{
-                scale: [1, 1.1, 1],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            >
-              <Atom size={24} className="absolute top-0 left-1/2 transform -translate-x-1/2" />
-            </motion.div>
-          </div>
-        </motion.div>
-
-        {/* Floating Book Animation */}
-        <motion.div
-          className="absolute top-1/5 right-1/5 text-purple-300/30"
-          animate={{
-            y: [-15, 15, -15],
-            rotate: [0, 5, -5, 0],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            ease: [0.4, 0, 0.6, 1] as const
-          }}
-        >
-          <BookOpen size={36} />
-        </motion.div>
-
-        {/* Pulsing Brain Icon */}
-        <motion.div
-          className="absolute bottom-1/5 right-1/4 text-indigo-300/25"
-          animate={{
-            scale: [1, 1.4, 1],
-            opacity: [0.25, 0.5, 0.25],
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        >
-          <Brain size={32} />
-        </motion.div>
-
-        {/* Floating Particles */}
-        {Array.from({ length: 12 }).map((_, index) => (
-          <motion.div
-            key={`particle-${index}`}
-            className="absolute w-2 h-2 bg-indigo-300/20 rounded-full"
-            style={{
-              left: `${(index * 83 + 37) % 95 + 2.5}%`,
-              top: `${(index * 67 + 29) % 85 + 7.5}%`,
-            }}
-            animate={{
-              y: [-20, 20, -20],
-              x: [-10, 10, -10],
-              scale: [1, 1.5, 1],
-              opacity: [0.3, 0.8, 0.3],
-            }}
-            transition={{
-              duration: 6 + (index % 3),
-              repeat: Infinity,
-              ease: [0.4, 0, 0.6, 1] as const,
-              delay: index * 0.3
-            }}
-          />
-        ))}
-
-        {/* Floating Bubbles */}
-        {Array.from({ length: 8 }).map((_, index) => (
-          <motion.div
-            key={`bubble-${index}`}
-            className="absolute border border-indigo-200/30 rounded-full"
-            style={{
-              width: `${20 + (index % 4) * 10}px`,
-              height: `${20 + (index % 4) * 10}px`,
-              left: `${(index * 123 + 41) % 90 + 5}%`,
-              top: `${(index * 97 + 53) % 80 + 10}%`,
-            }}
-            animate={{
-              scale: [1, 1.2, 1],
-              opacity: [0.1, 0.3, 0.1],
-              rotate: [0, 180, 360],
-            }}
-            transition={{
-              duration: 8 + (index % 3),
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: index * 0.5
-            }}
-          />
-        ))}
-      </motion.div>
-
-      {/* Header */}
-      <motion.header 
-        className="relative bg-white/80 backdrop-blur-sm border-b border-indigo-100 shadow-sm"
-        initial={{ opacity: 0, y: -50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8 }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <motion.div 
-              className="flex items-center"
-              whileHover={{ scale: 1.02 }}
-              transition={{ duration: 0.3 }}
-            >
-              <motion.div 
-                className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg shadow-lg"
-                whileHover={{ 
-                  scale: 1.1,
-                  rotate: [0, -5, 5, 0],
-                  boxShadow: "0 10px 30px rgba(99, 102, 241, 0.4)"
-                }}
-                transition={{ duration: 0.3 }}
-              >
-                <motion.div
-                  animate={{ 
-                    rotate: [0, 10, -10, 0],
-                  }}
-                  transition={{ 
-                    duration: 4,
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                >
+    <>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
+        {/* Navigation */}
+        <header className="relative z-40 bg-white/80 backdrop-blur-md border-b border-gray-200/50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg">
                   <GraduationCap className="h-6 w-6 text-white" />
-                </motion.div>
-              </motion.div>
-              <motion.h1 
-                className="ml-3 text-2xl font-bold text-gray-900"
-                whileHover={{ 
-                  color: "#4F46E5",
-                  textShadow: "0 0 10px rgba(79, 70, 229, 0.5)"
-                }}
-                transition={{ duration: 0.2 }}
-              >
-                Vidyakosh
-              </motion.h1>
-              <motion.span 
-                className="ml-2 text-sm text-indigo-600 font-medium"
-                animate={{
-                  opacity: [0.7, 1, 0.7],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-              >
-                LMS
-              </motion.span>
-            </motion.div>
-            <motion.div 
-              className="space-x-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-            >
-              <motion.div
-                whileHover={{ 
-                  scale: 1.05,
-                  y: -2
-                }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Button variant="ghost" className="text-gray-700 hover:text-indigo-600" asChild>
+                </div>
+                <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  Riven
+                </span>
+              </div>
+              
+              <div className="flex items-center space-x-4">
+                <Button variant="ghost" asChild className="hidden sm:inline-flex">
                   <Link href="/login">Sign In</Link>
                 </Button>
-              </motion.div>
-              <motion.div
-                whileHover={{
-                  scale: 1.05,
-                  boxShadow: "0 10px 30px rgba(99, 102, 241, 0.4)",
-                  y: -2
-                }}
-                whileTap={{ scale: 0.95 }}
-                transition={{ duration: 0.2 }}
-              >
-                <Button className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg" asChild>
-                  <Link href="/signup">Get Started</Link>
+                <Button 
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
+                  onClick={() => setShowRegistration(true)}
+                >
+                  <School className="h-4 w-4 mr-2" />
+                  Register School
                 </Button>
-              </motion.div>
-            </motion.div>
+              </div>
+            </div>
           </div>
-        </div>
-      </motion.header>
+        </header>
 
       {/* Hero Section */}
+        <section className="relative py-20 lg:py-32">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
       <motion.div 
-        className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20"
-        style={{ y: y1 }}
-      >
-        <motion.div 
-          className="text-center mb-20"
-          variants={staggerContainer}
-          initial="initial"
-          animate="animate"
-        >
-          <motion.div
-            variants={fadeInUp}
-            className="mb-6"
-            whileHover={{ scale: 1.05 }}
-            transition={{ duration: 0.2 }}
-          >
-            <motion.span 
-              className="inline-flex items-center px-4 py-2 rounded-full bg-indigo-100 text-indigo-700 text-sm font-medium"
-              whileHover={{
-                backgroundColor: "#4F46E5",
-                color: "#FFFFFF",
-                scale: 1.05
-              }}
-              transition={{ duration: 0.3 }}
-            >
-              <motion.div
-                animate={{ rotate: [0, 360] }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                className="text-center lg:text-left"
+                {...fadeIn}
               >
-                <Award className="h-4 w-4 mr-2" />
-              </motion.div>
-              Professional Learning Management System
-            </motion.span>
-          </motion.div>
-          
-          <motion.h1 
-            variants={fadeInUp}
-            className="text-5xl md:text-6xl font-bold mb-6 leading-tight text-gray-900"
-            whileHover={{
-              scale: 1.02,
-              textShadow: "0 0 20px rgba(79, 70, 229, 0.3)"
-            }}
-            transition={{ duration: 0.3 }}
-          >
-            <motion.span
-              animate={{
-                background: [
-                  "linear-gradient(45deg, #1f2937, #1f2937)",
-                  "linear-gradient(45deg, #4F46E5, #7C3AED)",
-                  "linear-gradient(45deg, #1f2937, #1f2937)"
-                ]
-              }}
-              style={{ backgroundClip: "text", WebkitBackgroundClip: "text" }}
-              transition={{ duration: 4, repeat: Infinity }}
-            >
-              Comprehensive School
-            </motion.span>
-            <br />
-            <motion.span 
-              className="text-indigo-600"
-              animate={{
-                scale: [1, 1.02, 1],
-                color: ["#4F46E5", "#7C3AED", "#4F46E5"]
-              }}
-              transition={{ 
-                duration: 3, 
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            >
-              Learning Platform
-            </motion.span>
-          </motion.h1>
-          
-          <motion.p 
-            variants={fadeInUp}
-            className="text-xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed"
-            whileHover={{
-              scale: 1.02,
-              color: "#4B5563"
-            }}
-            transition={{ duration: 0.3 }}
-          >
-            <TypewriterText 
-              text="Streamline your educational institution with our complete learning management system. Manage courses, track student progress, facilitate communication, and enhance the learning experience."
-              delay={1000}
-            />
-          </motion.p>
-          
-          <motion.div 
-            variants={fadeInUp}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-          >
-            <motion.div
-              whileHover={{
-                scale: 1.05,
-                boxShadow: "0 15px 40px rgba(99, 102, 241, 0.3)",
-                y: -3
-              }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-            >
-              <Button size="lg" className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 text-lg shadow-lg" asChild>
-                <Link href="/signup" className="flex items-center">
-                  Get Started Free
-                  <motion.div
-                    animate={{ x: [0, 5, 0] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="ml-2"
+                <div className="inline-flex items-center px-4 py-2 bg-blue-100 text-blue-800 rounded-full text-sm font-medium mb-6">
+                  <Zap className="h-4 w-4 mr-2" />
+                  Transform Education Today
+                </div>
+
+                <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                  The Future of
+                  <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Learning Management
+                  </span>
+                </h1>
+                
+                <p className="text-xl text-gray-600 mb-8 max-w-2xl lg:max-w-none">
+                  Empower your educational institution with Riven, our comprehensive SaaS LMS platform. 
+                  Streamline teaching, enhance student engagement, and drive academic success.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-4 mb-8">
+                  <Button 
+                    size="lg" 
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8 py-4 text-lg shadow-xl"
+                    onClick={() => setShowRegistration(true)}
                   >
-                    <ArrowRight className="h-5 w-5" />
-                  </motion.div>
+                    <School className="h-5 w-5 mr-2" />
+                    Register Your School
+                    <ArrowRight className="h-5 w-5 ml-2" />
+                  </Button>
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="border-2 border-gray-300 hover:border-blue-500 hover:bg-blue-50 font-semibold px-8 py-4 text-lg"
+                    asChild
+                  >
+                    <Link href="/login">
+                      <PlayCircle className="h-5 w-5 mr-2" />
+                      Watch Demo
                 </Link>
               </Button>
+                </div>
+
+                <div className="flex items-center justify-center lg:justify-start space-x-8 text-sm text-gray-500">
+                  <div className="flex items-center">
+                    <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                    14-day free trial
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                    No credit card required
+                  </div>
+                  <div className="flex items-center">
+                    <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
+                    Cancel anytime
+                  </div>
+                </div>
             </motion.div>
             
             <motion.div
-              whileHover={{
-                scale: 1.05,
-                borderColor: "#4F46E5",
-                backgroundColor: "rgba(99, 102, 241, 0.05)"
-              }}
-              whileTap={{ scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-            >
-              <Button variant="outline" size="lg" className="border-2 px-8 py-3 text-lg" asChild>
-                <Link href="/login">
-                  Sign In
-                </Link>
-              </Button>
-            </motion.div>
-          </motion.div>
-        </motion.div>
-
-        {/* Features Grid */}
-        <motion.div 
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-20"
-          variants={staggerContainer}
-          initial="initial"
-          animate="animate"
-        >
-          {[
-            {
-              icon: BookOpen,
-              title: "Course Management",
-              description: "Create comprehensive courses with structured lessons, assignments, and assessments",
-              color: "indigo"
-            },
-            {
-              icon: Users,
-              title: "Student & Faculty Management",
-              description: "Efficiently manage student enrollment, faculty assignments, and role-based permissions",
-              color: "purple"
-            },
-            {
-              icon: MessageSquare,
-              title: "Communication Hub",
-              description: "Real-time messaging, announcements, and collaborative discussion forums",
-              color: "blue"
-            },
-            {
-              icon: BarChart3,
-              title: "Performance Analytics",
-              description: "Detailed reports on student progress, course effectiveness, and institutional metrics",
-              color: "emerald"
-            }
-          ].map((feature, index) => {
-            const Icon = feature.icon
-            return (
-              <motion.div
-                key={index}
-                variants={fadeInUp}
-                whileHover={{ 
-                  y: -8, 
-                  scale: 1.02,
-                  rotateY: 5,
-                  z: 50
-                }}
-                transition={{ duration: 0.3, ease: "easeOut" }}
-                style={{ perspective: 1000 }}
+                className="relative"
+                initial={{ opacity: 0, x: 50 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8, delay: 0.4 }}
               >
-                <motion.div
-                  whileHover={{
-                    boxShadow: "0 25px 50px rgba(0,0,0,0.15)",
-                    background: "rgba(255,255,255,0.9)"
-                  }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <Card className="h-full bg-white/70 backdrop-blur-sm border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-300">
-                    <CardHeader className="text-center pb-4">
-                      <motion.div 
-                        className={`w-14 h-14 mx-auto mb-4 rounded-xl bg-${feature.color}-100 flex items-center justify-center`}
-                        whileHover={{ 
-                          scale: 1.2,
-                          rotate: [0, -10, 10, 0],
-                          background: feature.color === 'indigo' ? '#4F46E5' : 
-                                     feature.color === 'purple' ? '#7C3AED' :
-                                     feature.color === 'blue' ? '#2563EB' :
-                                     '#059669'
-                        }}
-                        transition={{ duration: 0.4 }}
-                      >
-                        <motion.div
-                          whileHover={{ 
-                            color: '#FFFFFF',
-                            scale: 1.1 
-                          }}
-                          transition={{ duration: 0.2 }}
-                        >
-                          <Icon className={`h-7 w-7 text-${feature.color}-600`} />
-                        </motion.div>
-                      </motion.div>
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        transition={{ duration: 0.2 }}
-                      >
-                        <CardTitle className="text-lg font-semibold text-gray-900">{feature.title}</CardTitle>
-                      </motion.div>
-                    </CardHeader>
-                    <CardContent>
-                      <CardDescription className="text-gray-600 text-center leading-relaxed">
-                        {feature.description}
-                      </CardDescription>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              </motion.div>
-            )
-          })}
-        </motion.div>
-
-        {/* Stats Section */}
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-20"
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1, duration: 0.8 }}
-        >
-          {[
-            { number: "50,000+", label: "Students Enrolled", icon: Users },
-            { number: "1,200+", label: "Educational Institutions", icon: GraduationCap },
-            { number: "99.9%", label: "System Uptime", icon: Target },
-            { number: "24/7", label: "Technical Support", icon: Clock }
-          ].map((stat, index) => {
-            const Icon = stat.icon
-            return (
-              <motion.div
-                key={index}
-                className="text-center"
-                whileHover={{ scale: 1.05 }}
-                animate={{
-                  y: [-5, 5, -5],
-                }}
-                transition={{
-                  duration: 4,
-                  repeat: Infinity,
-                  ease: [0.4, 0, 0.6, 1] as const,
-                  delay: index * 0.2
-                }}
-              >
-                <div className="bg-white/80 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-gray-200">
-                  <Icon className="h-8 w-8 text-indigo-600 mx-auto mb-3" />
-                  <div className="text-3xl font-bold text-gray-900 mb-2">
-                    {stat.number}
+                <div className="relative bg-white rounded-2xl shadow-2xl p-8 border border-gray-200/50">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="h-3 w-3 bg-red-500 rounded-full"></div>
+                      <div className="h-3 w-3 bg-yellow-500 rounded-full"></div>
+                      <div className="h-3 w-3 bg-green-500 rounded-full"></div>
+                    </div>
                   </div>
-                  <div className="text-gray-600 font-medium">{stat.label}</div>
+                  <div className="space-y-4">
+                    <div className="h-4 bg-gradient-to-r from-blue-200 to-purple-200 rounded-full w-3/4"></div>
+                    <div className="h-4 bg-gradient-to-r from-green-200 to-blue-200 rounded-full w-1/2"></div>
+                    <div className="h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
+                      <div className="text-gray-500 text-sm">Interactive Dashboard Preview</div>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg"></div>
+                      <div className="h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg"></div>
+                      <div className="h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-lg"></div>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
-            )
-          })}
-        </motion.div>
+            </div>
+          </div>
+        </section>
+
+        {/* Features Section */}
+        <section className="py-20 bg-white/50 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                Everything You Need to Succeed
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Our comprehensive platform provides all the tools and features your educational institution needs to thrive in the digital age.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {features.map((feature, index) => (
+                <div
+                  key={index}
+                  className="bg-white rounded-2xl p-8 shadow-lg border border-gray-200/50 hover:shadow-2xl transition-all duration-300"
+                >
+                  <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-6 shadow-lg">
+                    <feature.icon className="h-8 w-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
+                  <p className="text-gray-600 leading-relaxed">{feature.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Pricing Section */}
+        <section className="py-20 bg-gradient-to-br from-gray-50 to-blue-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                Simple, Transparent Pricing
+              </h2>
+              <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                Choose the perfect plan for your institution. All plans include a 14-day free trial with no setup fees.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {pricingPlans.map((plan, index) => (
+                <div
+                key={index}
+                  className={`relative bg-white rounded-2xl shadow-lg border-2 p-8 ${
+                    plan.popular 
+                      ? 'border-blue-500 transform scale-105' 
+                      : 'border-gray-200/50'
+                  }`}
+                >
+                  {plan.popular && (
+                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                      <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1">
+                        Most Popular
+                      </Badge>
+                    </div>
+                  )}
+
+                  <div className="text-center mb-8">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
+                    <div className="mb-4">
+                      {plan.price === 'Custom' ? (
+                        <span className="text-4xl font-bold text-gray-900">Custom</span>
+                      ) : (
+                        <>
+                          <span className="text-4xl font-bold text-gray-900">${plan.price}</span>
+                          <span className="text-gray-600">/{plan.period}</span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-gray-600">{plan.description}</p>
+                  </div>
+
+                  <ul className="space-y-4 mb-8">
+                    {plan.features.map((feature, featureIndex) => (
+                      <li key={featureIndex} className="flex items-center">
+                        <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
+                        <span className="text-gray-700">{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Button 
+                    className={`w-full font-semibold py-3 ${
+                      plan.popular 
+                        ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white' 
+                        : 'border-2 border-gray-300 hover:border-blue-500 hover:bg-blue-50'
+                    }`}
+                    variant={plan.popular ? 'default' : 'outline'}
+                    onClick={() => setShowRegistration(true)}
+                  >
+                    Start Free Trial
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
         {/* CTA Section */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 1.2, duration: 0.8 }}
-        >
-          <Card className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-2xl border-0 overflow-hidden relative">
-            <div className="absolute inset-0">
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600/95 to-purple-600/95"></div>
-              {/* Mathematical patterns in background */}
-              <div className="absolute top-4 right-4 text-white/10 text-6xl font-bold">∑</div>
-              <div className="absolute bottom-4 left-4 text-white/10 text-5xl font-bold">∫</div>
-              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white/5 text-8xl font-bold">π</div>
-            </div>
-            <CardContent className="relative text-center py-16 px-8">
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.4, duration: 0.6 }}
+        <section className="py-20 bg-gradient-to-br from-blue-600 to-purple-700 text-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-4xl font-bold mb-4">
+              Ready to Transform Your Institution?
+            </h2>
+             <p className="text-xl mb-8 max-w-3xl mx-auto opacity-90">
+               Join thousands of educational institutions already using Riven to deliver exceptional learning experiences.
+             </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button 
+                size="lg" 
+                className="bg-white text-blue-600 hover:bg-gray-100 font-semibold px-8 py-4 text-lg shadow-xl"
+                onClick={() => setShowRegistration(true)}
               >
-                <GraduationCap className="h-12 w-12 text-white mx-auto mb-6" />
-                <h2 className="text-3xl md:text-4xl font-bold mb-6">Transform Your Educational Institution</h2>
-                <p className="text-indigo-100 mb-10 text-lg max-w-2xl mx-auto leading-relaxed">
-                  Join educational leaders worldwide who trust Vidyakosh to deliver exceptional learning experiences, 
-                  improve student outcomes, and streamline institutional operations.
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-                  <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Button size="lg" variant="secondary" className="bg-white text-indigo-600 hover:bg-gray-50 px-8 py-4 text-lg font-semibold shadow-lg" asChild>
-                      <Link href="/signup" className="flex items-center">
-                        Get Started Today
-                        <ArrowRight className="ml-2 h-5 w-5" />
+                <School className="h-5 w-5 mr-2" />
+                Register Your School Now
+                <ArrowRight className="h-5 w-5 ml-2" />
+              </Button>
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="border-2 border-white text-white hover:bg-white hover:text-blue-600 font-semibold px-8 py-4 text-lg"
+                asChild
+              >
+                <Link href="/login">
+                  <Mail className="h-5 w-5 mr-2" />
+                  Contact Sales
                       </Link>
                     </Button>
-                  </motion.div>
-                  <div className="text-indigo-100 text-sm">
-                    Free setup • Professional support included
-                  </div>
-                </div>
-              </motion.div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </motion.div>
-
-      {/* Footer */}
-      <motion.footer 
-        className="relative bg-white/80 backdrop-blur-sm border-t border-gray-200"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.6, duration: 0.6 }}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <div className="flex items-center mb-4 md:mb-0">
-              <div className="p-2 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-lg">
-                <GraduationCap className="h-5 w-5 text-white" />
-              </div>
-              <span className="ml-3 text-lg font-bold text-gray-900">
-                Vidyakosh
-              </span>
-              <span className="ml-2 text-sm text-indigo-600 font-medium">LMS</span>
             </div>
-            <p className="text-gray-500">&copy; 2025 Vidyakosh Learning Management System. Empowering Education.</p>
           </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="bg-gray-900 text-white py-16">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+              <div className="col-span-1 md:col-span-2">
+                <div className="flex items-center space-x-3 mb-6">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+                    <GraduationCap className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-2xl font-bold">Riven</span>
+                </div>
+                <p className="text-gray-400 mb-6 max-w-md">
+                  Empowering educational institutions with cutting-edge learning management technology. 
+                  Transform your teaching and enhance student success.
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold text-lg mb-4">Product</h3>
+                <ul className="space-y-3 text-gray-400">
+                  <li><Link href="#" className="hover:text-white transition-colors">Features</Link></li>
+                  <li><Link href="#" className="hover:text-white transition-colors">Pricing</Link></li>
+                  <li><Link href="#" className="hover:text-white transition-colors">Integrations</Link></li>
+                  <li><Link href="#" className="hover:text-white transition-colors">API</Link></li>
+                </ul>
+              </div>
+              
+              <div>
+                <h3 className="font-semibold text-lg mb-4">Support</h3>
+                <ul className="space-y-3 text-gray-400">
+                  <li><Link href="#" className="hover:text-white transition-colors">Documentation</Link></li>
+                  <li><Link href="#" className="hover:text-white transition-colors">Help Center</Link></li>
+                  <li><Link href="#" className="hover:text-white transition-colors">Contact Us</Link></li>
+                  <li><Link href="#" className="hover:text-white transition-colors">Status</Link></li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+              <p className="text-gray-400 text-sm">
+                © 2024 Riven. All rights reserved.
+              </p>
+              <div className="flex space-x-6 text-sm text-gray-400 mt-4 md:mt-0">
+                <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>
+                <Link href="#" className="hover:text-white transition-colors">Terms of Service</Link>
+                <Link href="#" className="hover:text-white transition-colors">Cookie Policy</Link>
+              </div>
+            </div>
+          </div>
+        </footer>
         </div>
-      </motion.footer>
-    </div>
+
+      {/* School Registration Modal */}
+      <AnimatePresence>
+        {showRegistration && (
+          <SchoolRegistrationForm onClose={() => setShowRegistration(false)} />
+        )}
+      </AnimatePresence>
+    </>
   )
 }

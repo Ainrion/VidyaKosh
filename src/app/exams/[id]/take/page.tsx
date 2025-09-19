@@ -9,7 +9,8 @@ import { Card } from '@/components/ui/card'
 
 import { Textarea } from '@/components/ui/textarea'
 import { ExamTimer } from '@/components/exam-timer'
-import { AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { FileUpload } from '@/components/ui/file-upload'
+import { AlertTriangle, CheckCircle2, Upload, File } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Exam {
@@ -28,10 +29,17 @@ interface Exam {
 interface ExamQuestion {
   id: string
   question_text: string
-  question_type: 'multiple_choice' | 'true_false' | 'short_answer' | 'essay'
+  question_type: 'multiple_choice' | 'true_false' | 'short_answer' | 'essay' | 'file_upload' | 'subjective'
   options: string[] | null
   points: number
   order_index: number
+  file_requirements?: {
+    allowed_types: string[]
+    max_size_mb: number
+    instructions: string
+  }
+  word_limit?: number
+  rich_text_enabled?: boolean
 }
 
 interface ExamSession {
@@ -50,6 +58,7 @@ export default function TakeExamPage() {
   const [questions, setQuestions] = useState<ExamQuestion[]>([])
   const [session, setSession] = useState<ExamSession | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, any>>({})
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false)
@@ -153,6 +162,71 @@ export default function TakeExamPage() {
     saveAnswers(newAnswers)
   }
 
+  const handleFileUpload = async (questionId: string, file: File) => {
+    if (!session) return
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      formData.append('examSessionId', session.id)
+      formData.append('questionId', questionId)
+
+      const response = await fetch('/api/exams/upload-file', {
+        method: 'POST',
+        body: formData
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Upload failed')
+      }
+
+      // Update uploaded files state
+      setUploadedFiles(prev => ({
+        ...prev,
+        [questionId]: result.file
+      }))
+
+      // Update answer to indicate file uploaded
+      updateAnswer(questionId, `FILE_UPLOADED:${result.file.id}`)
+
+      toast.success('File uploaded successfully')
+    } catch (error) {
+      console.error('Upload error:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to upload file')
+    }
+  }
+
+  const handleFileRemove = async (questionId: string) => {
+    if (!session || !uploadedFiles[questionId]) return
+
+    try {
+      const response = await fetch(`/api/exams/upload-file?answerId=${uploadedFiles[questionId].id}`, {
+        method: 'DELETE'
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to remove file')
+      }
+
+      // Update state
+      setUploadedFiles(prev => {
+        const newFiles = { ...prev }
+        delete newFiles[questionId]
+        return newFiles
+      })
+
+      // Clear answer
+      updateAnswer(questionId, '')
+
+      toast.success('File removed successfully')
+    } catch (error) {
+      console.error('Remove error:', error)
+      toast.error('Failed to remove file')
+    }
+  }
+
   const saveAnswers = async (answersToSave: Record<string, string>) => {
     if (!session) return
 
@@ -233,7 +307,17 @@ export default function TakeExamPage() {
     )
   }
 
-  const unansweredQuestions = questions.filter(q => !answers[q.id]?.trim()).length
+  const unansweredQuestions = questions.filter(q => {
+    const answer = answers[q.id]
+    if (!answer?.trim()) return true
+    
+    // For file upload questions, check if file is actually uploaded
+    if (q.question_type === 'file_upload') {
+      return !uploadedFiles[q.id]
+    }
+    
+    return false
+  }).length
   const totalPoints = questions.reduce((sum, q) => sum + (q.points || 1), 0)
 
   return (
@@ -292,7 +376,7 @@ export default function TakeExamPage() {
                 <div className="flex items-center gap-2 mb-2">
                   <span className="text-lg font-semibold">Question {index + 1}</span>
                   <span className="text-sm text-gray-500">({question.points} point{question.points !== 1 ? 's' : ''})</span>
-                  {answers[question.id]?.trim() && (
+                  {(answers[question.id]?.trim() || (question.question_type === 'file_upload' && uploadedFiles[question.id])) && (
                     <CheckCircle2 className="h-5 w-5 text-green-500" />
                   )}
                 </div>
@@ -348,15 +432,53 @@ export default function TakeExamPage() {
                 </div>
               )}
 
-              {/* Short Answer & Essay */}
-              {(question.question_type === 'short_answer' || question.question_type === 'essay') && (
-                <Textarea
-                  value={answers[question.id] || ''}
-                  onChange={(e) => updateAnswer(question.id, e.target.value)}
-                  placeholder="Enter your answer here..."
-                  rows={question.question_type === 'essay' ? 6 : 3}
-                  className="w-full"
-                />
+              {/* Short Answer, Essay & Subjective */}
+              {(question.question_type === 'short_answer' || question.question_type === 'essay' || question.question_type === 'subjective') && (
+                <div className="space-y-2">
+                  <Textarea
+                    value={answers[question.id] || ''}
+                    onChange={(e) => updateAnswer(question.id, e.target.value)}
+                    placeholder="Enter your answer here..."
+                    rows={question.question_type === 'essay' || question.question_type === 'subjective' ? 6 : 3}
+                    className="w-full"
+                  />
+                  {question.word_limit && (
+                    <div className="text-sm text-gray-500">
+                      Word limit: {question.word_limit} words
+                      {answers[question.id] && (
+                        <span className="ml-2">
+                          ({answers[question.id].split(' ').filter(word => word.trim()).length} words used)
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* File Upload */}
+              {question.question_type === 'file_upload' && (
+                <div className="space-y-4">
+                  {question.file_requirements?.instructions && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <p className="text-sm text-blue-800">
+                        <strong>Instructions:</strong> {question.file_requirements.instructions}
+                      </p>
+                    </div>
+                  )}
+                  
+                  <FileUpload
+                    onFileSelect={(file) => handleFileUpload(question.id, file)}
+                    onFileRemove={() => handleFileRemove(question.id)}
+                    acceptedTypes={question.file_requirements?.allowed_types || ['.pdf', '.doc', '.docx']}
+                    maxSizeMB={question.file_requirements?.max_size_mb || 10}
+                    existingFile={uploadedFiles[question.id] ? {
+                      name: uploadedFiles[question.id].name,
+                      size: uploadedFiles[question.id].size,
+                      url: uploadedFiles[question.id].url
+                    } : undefined}
+                    placeholder="Upload your answer file here..."
+                  />
+                </div>
               )}
             </div>
           </Card>

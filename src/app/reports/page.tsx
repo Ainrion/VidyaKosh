@@ -1,6 +1,6 @@
 'use client'
 
-import { DashboardLayout } from '@/components/dashboard-layout'
+// DashboardLayout is now handled globally in AppLayout
 import { useAuth } from '@/hooks/useAuth'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -137,8 +137,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
+    <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Reports & Analytics</h1>
@@ -350,7 +349,5 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </DashboardLayout>
-  )
+      </div>  )
 }

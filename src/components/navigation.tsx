@@ -19,7 +19,11 @@ import {
   GraduationCap,
   ChevronRight,
   Menu,
-  X
+  X,
+  Target,
+  Mail,
+  UserPlus,
+  Link as LinkIcon
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -29,11 +33,15 @@ import { useState } from 'react'
 const navigation = {
   admin: [
     { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
+    { name: 'Admin Panel', href: '/admin', icon: Building2 },
+    { name: 'Student Invitations', href: '/admin/invitations', icon: Mail, description: 'Invite students to join school' },
+    { name: 'Teacher Invitations', href: '/admin/teacher-invitations', icon: UserPlus, description: 'Invite teachers to join school' },
+    { name: 'Course Enrollments', href: '/admin/enrollments', icon: GraduationCap, description: 'Manage student course enrollments' },
     { name: 'Courses', href: '/courses', icon: BookOpen },
+    { name: 'Quiz Builder', href: '/quiz-builder', icon: Target },
     { name: 'Exams', href: '/exams', icon: ClipboardList },
     { name: 'Assignments', href: '/assignments', icon: PenTool },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
-    { name: 'Schools', href: '/schools', icon: Building2 },
     { name: 'Users', href: '/users', icon: Users },
     { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Reports', href: '/reports', icon: FileText },
@@ -42,7 +50,9 @@ const navigation = {
   ],
   teacher: [
     { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
+    { name: 'Course Codes', href: '/teacher/enrollment-codes', icon: LinkIcon, description: 'Generate codes for course enrollment' },
     { name: 'My Courses', href: '/courses', icon: BookOpen },
+    { name: 'Quiz Builder', href: '/quiz-builder', icon: Target },
     { name: 'Exams', href: '/exams', icon: ClipboardList },
     { name: 'Assignments', href: '/assignments', icon: PenTool },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
@@ -54,6 +64,7 @@ const navigation = {
   student: [
     { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
     { name: 'My Courses', href: '/courses', icon: BookOpen },
+    { name: 'Join Course', href: '/enroll', icon: LinkIcon, description: 'Use code to join a course' },
     { name: 'Exams', href: '/student/exams', icon: ClipboardList },
     { name: 'Assignments', href: '/assignments', icon: FileText },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
@@ -67,7 +78,23 @@ export function Navigation() {
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
 
-  if (!profile) return null
+  if (!profile) {
+    return (
+      <nav className="flex h-screen flex-col bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700 shadow-2xl w-16">
+        <div className="flex h-20 items-center justify-center border-b border-slate-700">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <GraduationCap className="h-6 w-6 text-white" />
+          </div>
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-slate-400">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
+            <p className="text-xs">Loading...</p>
+          </div>
+        </div>
+      </nav>
+    )
+  }
 
   const userNavigation = navigation[profile.role] || []
 
@@ -91,7 +118,7 @@ export function Navigation() {
               <GraduationCap className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">Vidyakosh</h1>
+              <h1 className="text-xl font-bold text-white">Riven</h1>
               <p className="text-xs text-slate-400">Learning Management</p>
             </div>
           </div>
@@ -128,7 +155,7 @@ export function Navigation() {
       </div>
       
       {/* Navigation Items */}
-      <div className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
+      <div className="flex-1 px-3 py-6 space-y-1 overflow-y-auto">
         {userNavigation.map((item) => {
           const Icon = item.icon
           const isActive = pathname === item.href
@@ -144,7 +171,7 @@ export function Navigation() {
                   ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                   : 'text-slate-300 hover:bg-slate-700/50 hover:text-white hover:shadow-md'
               )}
-              title={isCollapsed ? item.name : undefined}
+              title={isCollapsed ? (item.description || item.name) : item.description}
             >
               {/* Active indicator */}
               {isActive && (

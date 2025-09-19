@@ -1,6 +1,6 @@
-# Vidyakosh Setup Guide
+# Riven Setup Guide
 
-This guide will help you set up the Vidyakosh LMS system from scratch.
+This guide will help you set up the Riven LMS system from scratch.
 
 ## Prerequisites
 
@@ -14,7 +14,7 @@ Before you begin, ensure you have:
 1. **Clone the repository** (if using git):
    ```bash
    git clone <your-repository-url>
-   cd vidyakosh
+   cd riven
    ```
 
 2. **Install dependencies**:
@@ -30,7 +30,7 @@ Before you begin, ensure you have:
 2. Sign up or log in
 3. Click "New Project"
 4. Choose your organization
-5. Enter project name (e.g., "vidyakosh-lms")
+5. Enter project name (e.g., "riven-lms")
 6. Enter a secure database password
 7. Choose a region close to your users
 8. Click "Create new project"
@@ -93,7 +93,7 @@ This will create all the necessary tables, relationships, and security policies.
 
 2. **Open your browser** and go to [http://localhost:3000](http://localhost:3000)
 
-3. You should see the Vidyakosh landing page
+3. You should see the Riven landing page
 
 ## Step 5: Create Your First School
 

@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
-import { DashboardLayout } from '@/components/dashboard-layout'
+// DashboardLayout is now handled globally in AppLayout
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -36,11 +36,18 @@ interface Exam {
 interface ExamQuestion {
   id?: string
   question_text: string
-  question_type: 'multiple_choice' | 'true_false' | 'short_answer' | 'essay'
+  question_type: 'multiple_choice' | 'true_false' | 'short_answer' | 'essay' | 'file_upload' | 'subjective'
   options: string[]
   correct_answer: string
   points: number
   order_index: number
+  file_requirements?: {
+    allowed_types: string[]
+    max_size_mb: number
+    instructions: string
+  }
+  word_limit?: number
+  rich_text_enabled?: boolean
 }
 
 export default function ExamsPage() {
@@ -140,14 +147,37 @@ export default function ExamsPage() {
       options: ['', '', '', ''],
       correct_answer: '',
       points: 1,
-      order_index: questions.length
+      order_index: questions.length,
+      file_requirements: {
+        allowed_types: ['.pdf', '.doc', '.docx'],
+        max_size_mb: 10,
+        instructions: 'Upload your answer sheet as a PDF or Word document.'
+      },
+      word_limit: undefined,
+      rich_text_enabled: false
     }
     setQuestions([...questions, newQuestion])
   }
 
-  const updateQuestion = (index: number, field: keyof ExamQuestion, value: string | number | string[]) => {
+  const updateQuestion = (index: number, field: keyof ExamQuestion, value: any) => {
     const updatedQuestions = [...questions]
     updatedQuestions[index] = { ...updatedQuestions[index], [field]: value }
+    setQuestions(updatedQuestions)
+  }
+
+  const updateFileRequirements = (index: number, field: string, value: any) => {
+    const updatedQuestions = [...questions]
+    if (!updatedQuestions[index].file_requirements) {
+      updatedQuestions[index].file_requirements = {
+        allowed_types: ['.pdf', '.doc', '.docx'],
+        max_size_mb: 10,
+        instructions: 'Upload your answer sheet as a PDF or Word document.'
+      }
+    }
+    updatedQuestions[index].file_requirements = {
+      ...updatedQuestions[index].file_requirements!,
+      [field]: value
+    }
     setQuestions(updatedQuestions)
   }
 
@@ -207,7 +237,10 @@ export default function ExamsPage() {
           options: q.question_type === 'multiple_choice' ? q.options : null,
           correct_answer: q.correct_answer,
           points: q.points,
-          order_index: index
+          order_index: index,
+          file_requirements: q.file_requirements || null,
+          word_limit: q.word_limit || null,
+          rich_text_enabled: q.rich_text_enabled || false
         }))
 
         const { error: questionsError } = await supabase
@@ -276,7 +309,14 @@ export default function ExamsPage() {
         options: q.options || ['', '', '', ''],
         correct_answer: q.correct_answer || '',
         points: q.points || 1,
-        order_index: q.order_index || 0
+        order_index: q.order_index || 0,
+        file_requirements: q.file_requirements || {
+          allowed_types: ['.pdf', '.doc', '.docx'],
+          max_size_mb: 10,
+          instructions: 'Upload your answer sheet as a PDF or Word document.'
+        },
+        word_limit: q.word_limit || undefined,
+        rich_text_enabled: q.rich_text_enabled || false
       })))
 
       setEditingExam(examId)
@@ -306,15 +346,11 @@ export default function ExamsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="p-6">Loading exams...</div>
-      </DashboardLayout>
-    )
+      <div className="p-6">Loading exams...</div>    )
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Exams</h1>
         <Button onClick={() => setShowCreateForm(true)}>
@@ -447,6 +483,8 @@ export default function ExamsPage() {
                           <option value="true_false">True/False</option>
                           <option value="short_answer">Short Answer</option>
                           <option value="essay">Essay</option>
+                          <option value="subjective">Subjective (Written)</option>
+                          <option value="file_upload">File Upload</option>
                         </select>
                       </div>
                       
@@ -459,7 +497,90 @@ export default function ExamsPage() {
                           min="1"
                         />
                       </div>
+
+                      {/* Word limit for essay and subjective questions */}
+                      {(question.question_type === 'essay' || question.question_type === 'subjective') && (
+                        <div>
+                          <Label>Word Limit (optional)</Label>
+                          <Input
+                            type="number"
+                            value={question.word_limit || ''}
+                            onChange={(e) => updateQuestion(index, 'word_limit', e.target.value ? parseInt(e.target.value) : undefined)}
+                            placeholder="e.g., 500"
+                            min="1"
+                          />
+                        </div>
+                      )}
                     </div>
+
+                    {/* Rich text option for essay and subjective questions */}
+                    {(question.question_type === 'essay' || question.question_type === 'subjective') && (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`rich-text-${index}`}
+                          checked={question.rich_text_enabled || false}
+                          onChange={(e) => updateQuestion(index, 'rich_text_enabled', e.target.checked)}
+                          className="rounded"
+                        />
+                        <Label htmlFor={`rich-text-${index}`} className="text-sm">
+                          Enable rich text formatting (bold, italic, etc.)
+                        </Label>
+                      </div>
+                    )}
+
+                    {/* File requirements for file upload questions */}
+                    {question.question_type === 'file_upload' && (
+                      <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+                        <h4 className="font-medium">File Upload Requirements</h4>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <Label>Allowed File Types</Label>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {['.pdf', '.doc', '.docx', '.txt', '.jpg', '.png'].map(type => (
+                                <label key={type} className="flex items-center gap-1 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={question.file_requirements?.allowed_types.includes(type) || false}
+                                    onChange={(e) => {
+                                      const currentTypes = question.file_requirements?.allowed_types || []
+                                      const newTypes = e.target.checked
+                                        ? [...currentTypes, type]
+                                        : currentTypes.filter(t => t !== type)
+                                      updateFileRequirements(index, 'allowed_types', newTypes)
+                                    }}
+                                    className="rounded"
+                                  />
+                                  {type}
+                                </label>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <Label>Maximum File Size (MB)</Label>
+                            <Input
+                              type="number"
+                              value={question.file_requirements?.max_size_mb || 10}
+                              onChange={(e) => updateFileRequirements(index, 'max_size_mb', parseInt(e.target.value))}
+                              min="1"
+                              max="50"
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <Label>Upload Instructions</Label>
+                          <Textarea
+                            value={question.file_requirements?.instructions || ''}
+                            onChange={(e) => updateFileRequirements(index, 'instructions', e.target.value)}
+                            placeholder="e.g., Upload your answer sheet as a PDF. Make sure your handwriting is clear and readable."
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                    )}
 
                     {/* Options for multiple choice */}
                     {question.question_type === 'multiple_choice' && (
@@ -586,6 +707,13 @@ export default function ExamsPage() {
                   {exam.is_published ? 'Unpublish' : 'Publish'}
                 </Button>
                 
+                <Link href={`/exams/${exam.id}/grade`}>
+                  <Button variant="outline" size="sm">
+                    <Users className="h-4 w-4 mr-2" />
+                    Grade
+                  </Button>
+                </Link>
+                
                 <Link href={`/exams/${exam.id}/results`}>
                   <Button variant="outline" size="sm">
                     <Users className="h-4 w-4 mr-2" />
@@ -603,7 +731,5 @@ export default function ExamsPage() {
           </div>
         )}
       </div>
-    </div>
-    </DashboardLayout>
-  )
+    </div>  )
 }

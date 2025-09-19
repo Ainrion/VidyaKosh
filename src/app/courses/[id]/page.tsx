@@ -1,6 +1,6 @@
 'use client'
 
-import { DashboardLayout } from '@/components/dashboard-layout'
+// DashboardLayout is now handled globally in AppLayout
 import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -146,25 +146,7 @@ export default function CourseDetailsPage() {
     }
   }, [courseId, profile?.role, profile?.id, supabase])
 
-  const enrollInCourse = async () => {
-    if (!profile || profile.role !== 'student') return
-
-    try {
-      const { error } = await supabase
-        .from('enrollments')
-        .insert({
-          course_id: courseId,
-          student_id: profile.id
-        })
-
-      if (error) throw error
-      
-      setIsEnrolled(true)
-      fetchEnrollments() // Refresh enrollments
-    } catch (error) {
-      console.error('Error enrolling in course:', error)
-    }
-  }
+  // Old enrollment functionality removed - students now use enrollment codes
 
   const createAssignment = async () => {
     if (!newAssignment.title.trim()) return
@@ -257,22 +239,18 @@ export default function CourseDetailsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
+      <div className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/3"></div>
             <div className="h-4 bg-gray-200 rounded w-2/3"></div>
             <div className="h-32 bg-gray-200 rounded"></div>
           </div>
-        </div>
-      </DashboardLayout>
-    )
+        </div>    )
   }
 
   if (!course) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
+      <div className="p-6">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Course not found</h1>
             <Button onClick={() => router.push('/courses')}>
@@ -280,14 +258,11 @@ export default function CourseDetailsPage() {
               Back to Courses
             </Button>
           </div>
-        </div>
-      </DashboardLayout>
-    )
+        </div>    )
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
+    <div className="p-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Button
@@ -354,9 +329,9 @@ export default function CourseDetailsPage() {
             </Dialog>
           )}
           {profile?.role === 'student' && !isEnrolled && (
-            <Button onClick={enrollInCourse}>
+            <Button onClick={() => window.location.href = '/enroll'}>
               <UserPlus className="h-4 w-4 mr-2" />
-              Enroll
+              Join with Code
             </Button>
           )}
         </div>
@@ -618,7 +593,5 @@ export default function CourseDetailsPage() {
             </TabsContent>
           )}
         </Tabs>
-      </div>
-    </DashboardLayout>
-  )
+      </div>  )
 }
