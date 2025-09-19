@@ -135,3 +135,5 @@ if (!schoolIdToUse && role === 'teacher' && schoolName) {
 The teacher signup process is now robust and user-friendly! 🎉
 
 
+
+

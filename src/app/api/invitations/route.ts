@@ -168,7 +168,7 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const body = await request.json()
-    const { email, message, expiresInDays = 7 } = body
+    const { email, message, expiresInDays = 7, role = 'student' } = body
 
     if (!email) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
@@ -277,7 +277,8 @@ export async function POST(request: NextRequest) {
         invitation_code: invitationCode,
         invited_by: user.id,
         expires_at: expiresAt.toISOString(),
-        message: message || `You've been invited to join ${profile.school_id ? 'our school' : 'the school'}!`
+        message: message || `You've been invited to join ${profile.school_id ? 'our school' : 'the school'}!`,
+        role: role
       })
       .select(`
         *,
@@ -293,8 +294,11 @@ export async function POST(request: NextRequest) {
     // Send email notification
     const invitationUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/signup?invite=${invitationCode}`
     
+    let emailSent = false
+    let emailError = null
+    
     try {
-      const emailSent = await sendInvitationEmail({
+      emailSent = await sendInvitationEmail({
         recipientName: email.split('@')[0], // Use email prefix as name
         recipientEmail: email,
         schoolName: invitation.school?.name || 'the school',
@@ -302,24 +306,27 @@ export async function POST(request: NextRequest) {
         invitationCode: invitationCode,
         invitationUrl: invitationUrl,
         message: message,
-        expiresAt: expiresAt.toISOString()
+        expiresAt: expiresAt.toISOString(),
+        role: role
       })
 
       if (emailSent) {
-        console.log('Invitation email sent successfully to:', email)
+        console.log('✅ Invitation email sent successfully to:', email)
       } else {
-        console.warn('Failed to send invitation email to:', email)
+        console.warn('❌ Failed to send invitation email to:', email)
+        emailError = 'Email sending failed - please check your email configuration'
       }
-    } catch (emailError) {
-      console.error('Error sending invitation email:', emailError)
-      // Don't fail the invitation creation if email fails
+    } catch (err) {
+      console.error('❌ Error sending invitation email:', err)
+      emailError = err instanceof Error ? err.message : 'Unknown email error'
     }
 
     return NextResponse.json({ 
       invitation,
       message: 'Invitation created successfully',
       invitationUrl: invitationUrl,
-      emailSent: true // We'll assume it was sent, actual status is logged
+      emailSent: emailSent,
+      emailError: emailError
     })
   } catch (error) {
     console.error('Error in invitations POST:', error)

@@ -232,3 +232,5 @@ The admin dashboard now includes a dedicated **"Teacher Invitations"** section i
 The teacher invitation system is now **fully complete and accessible** through the admin dashboard sidebar, providing a comprehensive solution for managing teacher onboarding at the school level! 🚀
 
 
+
+

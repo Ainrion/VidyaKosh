@@ -60,18 +60,11 @@ export default function SignupPage() {
     const inviteParam = searchParams.get('invite')
     
     if (code) {
-      if (roleParam === 'teacher') {
-        // Teacher invitation - switch to regular signup tab and set role
-        setFormData(prev => ({ ...prev, role: 'teacher', invitationCode: code }))
-        setActiveTab('regular') // Switch to admin/teacher signup tab
-      } else {
-        // Student invitation - use invitation tab
-        setInvitationFormData(prev => ({ ...prev, invitationCode: code }))
-        setActiveTab('invitation') // Stay on student signup tab
-      }
+      // Student invitation - use invitation tab
+      setInvitationFormData(prev => ({ ...prev, invitationCode: code }))
+      setActiveTab('invitation') // Stay on student signup tab
     } else if (inviteParam) {
-      // Handle both teacher and student invitations with ?invite=CODE format
-      // We need to validate the invitation to determine the role
+      // Handle student invitations with ?invite=CODE format
       validateInvitationAndSetup(inviteParam)
     }
   }, [searchParams])
@@ -85,9 +78,8 @@ export default function SignupPage() {
         const { invitation } = data
         
         if (invitation.role === 'teacher') {
-          // Teacher invitation - switch to regular signup tab and set role
-          setFormData(prev => ({ ...prev, role: 'teacher', invitationCode }))
-          setActiveTab('regular') // Switch to admin/teacher signup tab
+          // Teacher invitation - redirect to new teacher join flow
+          window.location.href = `/join/teacher?token=${invitationCode}`
         } else {
           // Student invitation - use invitation tab
           setInvitationFormData(prev => ({ ...prev, invitationCode }))
@@ -121,6 +113,11 @@ export default function SignupPage() {
       const data = await response.json()
 
       if (!response.ok) {
+        console.error('Invitation validation failed:', {
+          code,
+          status: response.status,
+          error: data.error
+        })
         setInvitationError(data.error || 'Invalid invitation code')
         setInvitation(null)
         return
@@ -151,17 +148,20 @@ export default function SignupPage() {
     return () => clearTimeout(timeoutId)
   }
 
+
   const handleInvitationSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setInvitationError('')
+
+    console.log('Invitation form data:', invitationFormData)
 
     try {
       // Validate required fields
       if (!invitationFormData.email || !invitationFormData.password || !invitationFormData.fullName || !invitationFormData.invitationCode) {
         throw new Error('Please fill in all required fields')
       }
-
+      
       // Validate invitation before proceeding
       if (!invitation) {
         throw new Error('Please enter a valid invitation code')
@@ -187,15 +187,46 @@ export default function SignupPage() {
         })
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        console.error('Invitation signup API error:', data)
-        throw new Error(data.error || 'Signup failed')
+      let data
+      try {
+        data = await response.json()
+      } catch (jsonError) {
+        console.error('Failed to parse response JSON:', jsonError)
+        throw new Error('Server returned invalid response')
       }
 
-      toastMessages.auth.signupSuccess()
-      router.push('/login')
+      if (!response.ok) {
+        console.error('Invitation signup API error:', { 
+          status: response.status, 
+          statusText: response.statusText, 
+          data 
+        })
+        
+        // Handle different error scenarios
+        if (response.status === 500) {
+          throw new Error('Internal server error. Please try again later.')
+        } else if (data && data.error) {
+          throw new Error(data.error)
+        } else if (data && typeof data === 'object' && Object.keys(data).length === 0) {
+          throw new Error('Server returned empty response. Please check your invitation code and try again.')
+        } else {
+          throw new Error('Signup failed. Please check your details and try again.')
+        }
+      }
+
+      // Check if email confirmation is required
+      if (data.requiresEmailConfirmation) {
+        toastMessages.auth.emailVerificationSent()
+        // Show email confirmation message instead of redirecting
+        setInvitationError('') // Clear any errors
+        // You could redirect to a confirmation page or show a modal
+        setTimeout(() => {
+          router.push('/login?message=' + encodeURIComponent('Please check your email and click the confirmation link to activate your account.'))
+        }, 3000)
+      } else {
+        toastMessages.auth.signupSuccess()
+        router.push('/login')
+      }
     } catch (error) {
       console.error('Error in invitation signup:', error)
       const errorMessage = error instanceof Error ? error.message : 'Signup failed'
@@ -217,34 +248,17 @@ export default function SignupPage() {
         throw new Error('Please fill in all required fields')
       }
 
-      // Include invitation code for teachers if present in URL or stored in form
-      const code = searchParams.get('code')
-      const roleParam = searchParams.get('role')
-      const signupData = { ...formData }
-      
-      // Handle invitation codes for different scenarios
-      if (code && roleParam === 'teacher' && formData.role === 'teacher') {
-        signupData.invitationCode = code
-      } else if (formData.invitationCode && formData.role === 'teacher') {
-        signupData.invitationCode = formData.invitationCode
-      }
-
       // For admin role, ensure schoolName is provided if no schoolId
-      if (formData.role === 'admin' && !signupData.schoolId && !signupData.schoolName) {
+      if (formData.role === 'admin' && !formData.schoolName) {
         throw new Error('School name is required for admin registration')
       }
 
-      // For teacher role without invitation, ensure schoolName is provided
-      if (formData.role === 'teacher' && !signupData.invitationCode && !signupData.schoolName) {
-        throw new Error('School name is required for teacher registration')
-      }
-
-      console.log('Sending signup data:', { ...signupData, password: '[HIDDEN]' })
+      console.log('Sending signup data:', { ...formData, password: '[HIDDEN]' })
 
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(signupData)
+        body: JSON.stringify(formData)
       })
 
       const data = await response.json()
@@ -254,8 +268,19 @@ export default function SignupPage() {
         throw new Error(data.error || 'Signup failed')
       }
 
-      toastMessages.auth.signupSuccess()
-      router.push('/login')
+      // Check if email confirmation is required
+      if (data.requiresEmailConfirmation) {
+        toastMessages.auth.emailVerificationSent()
+        // Show email confirmation message instead of redirecting
+        setError('') // Clear any errors
+        // You could redirect to a confirmation page or show a modal
+        setTimeout(() => {
+          router.push('/login?message=' + encodeURIComponent('Please check your email and click the confirmation link to activate your account.'))
+        }, 3000)
+      } else {
+        toastMessages.auth.signupSuccess()
+        router.push('/login')
+      }
     } catch (error) {
       console.error('Error in signup:', error)
       const errorMessage = error instanceof Error ? error.message : 'Signup failed'
@@ -335,7 +360,7 @@ export default function SignupPage() {
                     className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm font-medium"
                   >
                     <UserPlus className="h-4 w-4 mr-2" />
-                    Admin/Teacher Signup
+                    Admin Signup
                   </TabsTrigger>
                 </TabsList>
 
@@ -451,76 +476,47 @@ export default function SignupPage() {
                       </div>
                     )}
 
-                    {/* Show school assignment info for teacher invitations */}
-                    {((searchParams.get('code') && searchParams.get('role') === 'teacher') || formData.invitationCode) && formData.role === 'teacher' && (
-                      <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                        <div className="flex items-center">
-                          <CheckCircle className="h-5 w-5 text-emerald-600 mr-2" />
-                          <span className="text-sm font-medium text-emerald-800">School Assignment</span>
-                        </div>
-                        <p className="text-sm text-emerald-700 mt-1">
-                          You'll be automatically assigned to the correct school from your invitation.
-                        </p>
-                      </div>
-                    )}
 
                     <div className="space-y-3">
                       <Label className="text-sm font-medium text-gray-700">Role</Label>
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                         <p className="text-sm text-blue-800">
-                          <strong>Note:</strong> Students must sign up using an invitation code. Teachers should preferably use invitation links from their school admin. Use the "Student Signup" tab for invitation codes.
+                          <strong>Note:</strong> Students must sign up using an invitation code (use the "Student Signup" tab). Teachers will receive invitation links from their school admin.
                         </p>
                       </div>
                       <div className="grid grid-cols-1 gap-3">
-                        {(['admin', 'teacher'] as const).map((role) => (
-                          <motion.div
-                            key={role}
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            <label className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                              formData.role === role 
-                                ? 'border-blue-500 bg-blue-50' 
-                                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        <motion.div
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <label className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                            formData.role === 'admin' 
+                              ? 'border-blue-500 bg-blue-50' 
+                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                          }`}>
+                            <input
+                              type="radio"
+                              name="role"
+                              value="admin"
+                              checked={formData.role === 'admin'}
+                              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'admin' | 'teacher' | 'student' }))}
+                              className="sr-only"
+                            />
+                            <div className={`w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center ${
+                              formData.role === 'admin' ? 'border-blue-500' : 'border-gray-300'
                             }`}>
-                              <input
-                                type="radio"
-                                name="role"
-                                value={role}
-                                checked={formData.role === role}
-                                onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'admin' | 'teacher' | 'student' }))}
-                                className="sr-only"
-                              />
-                              <div className={`w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center ${
-                                formData.role === role ? 'border-blue-500' : 'border-gray-300'
-                              }`}>
-                                {formData.role === role && (
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                )}
-                              </div>
-                              <div>
-                                <div className="font-medium text-gray-900 capitalize">{role}</div>
-                                <div className="text-sm text-gray-600">{roleDescriptions[role]}</div>
-                              </div>
-                            </label>
-                          </motion.div>
-                        ))}
+                              {formData.role === 'admin' && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-medium text-gray-900">Admin</div>
+                              <div className="text-sm text-gray-600">{roleDescriptions.admin}</div>
+                            </div>
+                          </label>
+                        </motion.div>
                       </div>
 
-                      {/* Additional info for teachers without invitation */}
-                      {formData.role === 'teacher' && !(searchParams.get('code') && searchParams.get('role') === 'teacher') && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mt-4">
-                          <div className="flex items-start">
-                            <Mail className="h-5 w-5 text-amber-600 mr-2 mt-0.5" />
-                            <div>
-                              <span className="text-sm font-medium text-amber-800">Recommended: Use Invitation Link</span>
-                              <p className="text-sm text-amber-700 mt-1">
-                                Ask your school administrator to send you an invitation link for automatic school assignment and a smoother signup process.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </div>
                     
                     <Button 
@@ -544,7 +540,7 @@ export default function SignupPage() {
                       Check your email for the invitation or contact your school.
                     </p>
                     <p className="text-xs text-emerald-600 mt-2">
-                      <strong>Teachers:</strong> If you received an invitation link via email, click that link instead of using this form.
+                      <strong>Teachers:</strong> If you received an invitation link via email, click that link to complete your profile setup.
                     </p>
                   </div>
                   

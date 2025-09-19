@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { nanoid } from 'nanoid'
+import { sendInvitationEmail } from '@/lib/email'
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,24 +87,33 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate invitation code
-    const invitationCode = nanoid(12)
+    // Generate join token for teacher
+    const joinToken = nanoid(16)
     
     // Set expiration date (7 days from now)
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 7)
+    
+    console.log('Creating teacher join invitation:', {
+      email,
+      joinToken,
+      expiresAt: expiresAt.toISOString(),
+      currentTime: new Date().toISOString(),
+      daysUntilExpiry: 7
+    })
 
-    // Create invitation
+    // Create invitation with join token
     const { data: invitation, error: createError } = await supabase
       .from('school_invitations')
       .insert({
         email: email,
-        invitation_code: invitationCode,
+        invitation_code: nanoid(12), // Keep for backward compatibility
+        join_token: joinToken, // New join token for teachers
         role: 'teacher',
         school_id: profile.school_id,
         invited_by: profile.id,
         expires_at: expiresAt.toISOString(),
-        message: message || `You've been invited to join our school as a teacher on Riven LMS.`,
+        message: message || `You've been invited to join our school as a teacher. Click the link below to complete your profile setup.`,
         status: 'pending'
       })
       .select(`
@@ -120,19 +130,53 @@ export async function POST(request: NextRequest) {
       }, { status: 500 })
     }
 
-    // TODO: Send email invitation (implement email service)
-    // For now, we'll return the invitation details
+    // Send email invitation to teacher
+    const joinUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join/teacher?token=${invitation.join_token}`
+    
+    let emailSent = false
+    let emailError = null
+    
+    try {
+      emailSent = await sendInvitationEmail({
+        recipientName: email.split('@')[0], // Use email prefix as name
+        recipientEmail: email,
+        schoolName: invitation.school?.name || 'the school',
+        inviterName: profile.full_name || 'School Administrator',
+        invitationCode: invitation.invitation_code, // Keep for compatibility
+        invitationUrl: joinUrl, // Use join URL for teachers
+        message: message,
+        expiresAt: invitation.expires_at,
+        role: 'teacher',
+        joinUrl: joinUrl,
+        joinToken: invitation.join_token
+      })
+
+      if (emailSent) {
+        console.log('✅ Teacher invitation email sent successfully to:', email)
+      } else {
+        console.warn('❌ Failed to send teacher invitation email to:', email)
+        emailError = 'Email sending failed - please check your email configuration'
+      }
+    } catch (err) {
+      console.error('❌ Error sending teacher invitation email:', err)
+      emailError = err instanceof Error ? err.message : 'Unknown email error'
+    }
     
     return NextResponse.json({
       success: true,
       invitation: {
         id: invitation.id,
         email: invitation.email,
-        code: invitation.invitation_code,
+        code: invitation.invitation_code, // Keep for backward compatibility
+        joinToken: invitation.join_token,
         expiresAt: invitation.expires_at,
-        inviteUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/signup?invite=${invitation.invitation_code}`
+        joinUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/join/teacher?token=${invitation.join_token}`,
+        // Legacy URL for backward compatibility
+        inviteUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/teacher/complete-profile?invite=${invitation.invitation_code}`
       },
-      message: 'Teacher invitation created successfully'
+      message: 'Teacher join invitation created successfully',
+      emailSent: emailSent,
+      emailError: emailError
     })
 
   } catch (error) {
@@ -174,8 +218,8 @@ export async function GET(request: NextRequest) {
       .from('school_invitations')
       .select(`
         *,
-        school:schools(*),
-        invited_by_profile:profiles!school_invitations_invited_by_fkey(*)
+        school:schools(id, name),
+        invited_by_profile:profiles!school_invitations_invited_by_fkey(id, full_name, email)
       `)
       .eq('school_id', profile.school_id)
       .eq('role', 'teacher')
@@ -184,11 +228,37 @@ export async function GET(request: NextRequest) {
     if (fetchError) {
       console.error('Error fetching teacher invitations:', fetchError)
       return NextResponse.json({ 
-        error: 'Failed to fetch invitations' 
+        error: 'Failed to fetch invitations',
+        details: fetchError.message
       }, { status: 500 })
     }
 
-    return NextResponse.json({ invitations })
+    // Transform invitations to ensure they have the expected structure
+    const transformedInvitations = (invitations || []).map(invitation => ({
+      id: invitation.id,
+      email: invitation.email,
+      role: invitation.role || 'teacher',
+      status: invitation.status || 'pending',
+      invitation_code: invitation.invitation_code,
+      expires_at: invitation.expires_at,
+      created_at: invitation.created_at,
+      accepted_at: invitation.accepted_at,
+      accepted_by: invitation.accepted_by,
+      invited_by: invitation.invited_by,
+      school: {
+        id: invitation.school?.id || invitation.school_id,
+        name: invitation.school?.name || 'Unknown School'
+      },
+      invited_by_profile: {
+        full_name: invitation.invited_by_profile?.full_name || 'Unknown',
+        email: invitation.invited_by_profile?.email || 'unknown@example.com'
+      }
+    }))
+
+    return NextResponse.json({ 
+      invitations: transformedInvitations,
+      total: transformedInvitations.length
+    })
 
   } catch (error) {
     console.error('Error fetching teacher invitations:', error)

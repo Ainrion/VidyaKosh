@@ -109,7 +109,16 @@ export default function InvitationManagement() {
         throw new Error(data.error || 'Failed to send invitation')
       }
 
-      toastMessages.invitations.sent(newInvitation.email)
+      // Check if email was actually sent
+      if (data.emailSent) {
+        toastMessages.invitations.sent(newInvitation.email)
+      } else {
+        console.error('Email sending failed:', data.emailError)
+        toastMessages.invitations.sendError(
+          data.emailError || 'Email could not be sent. Please check your email configuration.'
+        )
+      }
+
       setNewInvitation({ email: '', message: '', expiresInDays: 7 })
       setNewInvitationOpen(false)
       fetchInvitations()

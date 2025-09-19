@@ -25,12 +25,14 @@ import {
   FileText, 
   Plus,
   UserPlus,
-  Edit
+  Edit,
+  Paperclip
 } from 'lucide-react'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useRouter, useParams } from 'next/navigation'
+import { FileUpload } from '@/components/ui/file-upload'
 
 type Course = Database['public']['Tables']['courses']['Row'] & {
   created_by_profile?: {
@@ -63,6 +65,8 @@ export default function CourseDetailsPage() {
     due_date: '',
     points: ''
   })
+  const [assignmentFile, setAssignmentFile] = useState<File | null>(null)
+  const [isUploadingFile, setIsUploadingFile] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [editCourse, setEditCourse] = useState({
@@ -153,18 +157,61 @@ export default function CourseDetailsPage() {
 
     setIsCreating(true)
     try {
-      const { error } = await supabase
-        .from('assignments')
-        .insert({
-          course_id: courseId,
-          title: newAssignment.title.trim(),
-          description: newAssignment.description.trim() || null,
-          due_date: newAssignment.due_date || null,
-          points: newAssignment.points ? parseInt(newAssignment.points) : null,
-          created_by: profile?.id
+      let fileData = null
+
+      // Upload file if one is selected
+      if (assignmentFile) {
+        setIsUploadingFile(true)
+        const formData = new FormData()
+        formData.append('file', assignmentFile)
+        formData.append('courseId', courseId)
+
+        const uploadResponse = await fetch('/api/assignments/upload-file', {
+          method: 'POST',
+          body: formData
         })
 
-      if (error) throw error
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json()
+          throw new Error(errorData.error || 'Failed to upload file')
+        }
+
+        const uploadData = await uploadResponse.json()
+        fileData = uploadData.file
+        setIsUploadingFile(false)
+      }
+
+      // Create assignment with file data
+      const assignmentData = {
+        course_id: courseId,
+        title: newAssignment.title.trim(),
+        description: newAssignment.description.trim() || null,
+        due_date: newAssignment.due_date || null,
+        points: newAssignment.points ? parseInt(newAssignment.points) : null,
+        created_by: profile?.id
+      }
+
+      // Only add attachment fields if file data exists
+      if (fileData) {
+        assignmentData.attachment_url = fileData.url
+        assignmentData.attachment_name = fileData.name
+        assignmentData.attachment_size = fileData.size
+        assignmentData.attachment_type = fileData.type
+      }
+
+      console.log('Creating assignment with data:', assignmentData)
+
+      const { data: newAssignmentData, error } = await supabase
+        .from('assignments')
+        .insert(assignmentData)
+        .select()
+
+      if (error) {
+        console.error('Supabase error details:', error)
+        throw new Error(`Database error: ${error.message || 'Unknown error'}`)
+      }
+
+      console.log('Assignment created successfully:', newAssignmentData)
 
       // Reset form and close dialog
       setNewAssignment({
@@ -173,12 +220,23 @@ export default function CourseDetailsPage() {
         due_date: '',
         points: ''
       })
+      setAssignmentFile(null)
       setIsCreateDialogOpen(false)
       
       // Refresh assignments
       fetchAssignments()
     } catch (error) {
       console.error('Error creating assignment:', error)
+      console.error('Error details:', {
+        message: error?.message,
+        stack: error?.stack,
+        name: error?.name,
+        cause: error?.cause
+      })
+      
+      // Show user-friendly error message
+      alert(`Failed to create assignment: ${error?.message || 'Unknown error occurred'}`)
+      setIsUploadingFile(false)
     } finally {
       setIsCreating(false)
     }
@@ -450,6 +508,17 @@ export default function CourseDetailsPage() {
                           />
                         </div>
                       </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="attachment">Assignment File (Optional)</Label>
+                        <FileUpload
+                          onFileSelect={(file) => setAssignmentFile(file)}
+                          onFileRemove={() => setAssignmentFile(null)}
+                          acceptedTypes={['.pdf', '.doc', '.docx', '.txt', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif']}
+                          maxSizeMB={25}
+                          disabled={isCreating || isUploadingFile}
+                          placeholder="Upload assignment file (PDF, Word, Excel, Images)"
+                        />
+                      </div>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
@@ -457,9 +526,9 @@ export default function CourseDetailsPage() {
                       </Button>
                       <Button 
                         onClick={createAssignment} 
-                        disabled={!newAssignment.title.trim() || isCreating}
+                        disabled={!newAssignment.title.trim() || isCreating || isUploadingFile}
                       >
-                        {isCreating ? 'Creating...' : 'Create Assignment'}
+                        {isUploadingFile ? 'Uploading File...' : isCreating ? 'Creating...' : 'Create Assignment'}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -504,7 +573,32 @@ export default function CourseDetailsPage() {
                       <p className="text-gray-700 mb-4">
                         {assignment.description || 'No description provided.'}
                       </p>
-                      <Button variant="outline" size="sm">
+                      {assignment.attachment_url && (
+                        <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
+                          <div className="flex items-center gap-2">
+                            <Paperclip className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm font-medium text-gray-700">
+                              {assignment.attachment_name || 'Assignment File'}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              ({assignment.attachment_size ? `${(assignment.attachment_size / 1024 / 1024).toFixed(1)} MB` : 'Unknown size'})
+                            </span>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="mt-2"
+                            onClick={() => window.open(assignment.attachment_url, '_blank')}
+                          >
+                            Download File
+                          </Button>
+                        </div>
+                      )}
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => router.push(`/assignments/${assignment.id}`)}
+                      >
                         View Assignment
                       </Button>
                     </CardContent>

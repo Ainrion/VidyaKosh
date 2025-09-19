@@ -5,7 +5,7 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const body = await request.json()
-    const { email, password, fullName, role, schoolId, schoolName, invitationCode } = body
+    let { email, password, fullName, role, schoolId, schoolName, invitationCode } = body
 
     console.log('Signup request received:', { 
       email, 
@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
         console.log('Validating invitation code:', invitationCode, 'for role:', role, 'email:', email)
         
         // Validate invitation code
-        const { data: invitationData, error: invitationError } = await supabase
+        // First try with role column (new schema), fallback to old schema if column doesn't exist
+        let { data: invitationData, error: invitationError } = await supabase
           .from('school_invitations')
           .select(`
             *,
@@ -55,9 +56,33 @@ export async function POST(request: NextRequest) {
           `)
           .eq('invitation_code', invitationCode)
           .eq('email', email)
-          .eq('role', role)
           .eq('status', 'pending')
           .single()
+
+        // If the query failed due to missing role column, try without role filter
+        if (invitationError && invitationError.code === '42703' && invitationError.message.includes('role')) {
+          console.log('Role column not found, trying without role filter')
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from('school_invitations')
+            .select(`
+              *,
+              school:schools(*),
+              invited_by_profile:profiles!school_invitations_invited_by_fkey(*)
+            `)
+            .eq('invitation_code', invitationCode)
+            .eq('email', email)
+            .eq('status', 'pending')
+            .single()
+          
+          invitationData = fallbackData
+          invitationError = fallbackError
+        } else if (invitationData && invitationData.role && invitationData.role !== role) {
+          // If role column exists but doesn't match, return error
+          console.error('Role mismatch for invitation:', { expected: role, actual: invitationData.role })
+          return NextResponse.json({ 
+            error: 'Invitation code is not valid for this role. Please check your invitation.' 
+          }, { status: 400 })
+        }
 
         console.log('Invitation query result:', { invitationData, invitationError })
 
@@ -80,8 +105,24 @@ export async function POST(request: NextRequest) {
         // Check if invitation is expired
         const now = new Date()
         const expiresAt = new Date(invitation.expires_at)
-        if (now > expiresAt) {
-          console.error('Invitation expired:', { now, expiresAt })
+        
+        // Add some buffer time (5 minutes) to account for clock skew and processing time
+        const bufferTime = 5 * 60 * 1000 // 5 minutes in milliseconds
+        const adjustedNow = new Date(now.getTime() + bufferTime)
+        
+        console.log('Signup invitation validation:', {
+          invitationCode,
+          email,
+          role,
+          now: now.toISOString(),
+          expiresAt: expiresAt.toISOString(),
+          adjustedNow: adjustedNow.toISOString(),
+          timeRemaining: expiresAt.getTime() - now.getTime(),
+          isExpired: adjustedNow > expiresAt
+        })
+        
+        if (adjustedNow > expiresAt) {
+          console.error('Invitation expired:', { now, expiresAt, adjustedNow })
           return NextResponse.json({ 
             error: 'Invitation code has expired. Please contact your school administrator for a new invitation.' 
           }, { status: 400 })
@@ -93,11 +134,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create user account
+    // Create user account with email confirmation
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
+        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
         data: {
           full_name: fullName,
           role: role
@@ -261,12 +303,36 @@ export async function POST(request: NextRequest) {
       success: true, 
       user: authData.user,
       profile: profile,
-      message: 'User created successfully' 
+      message: 'User created successfully',
+      emailConfirmationSent: !authData.user.email_confirmed_at,
+      requiresEmailConfirmation: !authData.user.email_confirmed_at
     })
   } catch (error) {
     console.error('Error in signup:', error)
+    
+    // Provide more specific error messages based on the error type
+    let errorMessage = 'Internal server error'
+    let statusCode = 500
+    
+    if (error instanceof Error) {
+      // Check for specific database errors
+      if (error.message.includes('column') && error.message.includes('does not exist')) {
+        errorMessage = 'Database schema issue. Please contact administrator.'
+        statusCode = 500
+      } else if (error.message.includes('duplicate key')) {
+        errorMessage = 'User already exists with this email.'
+        statusCode = 400
+      } else if (error.message.includes('foreign key')) {
+        errorMessage = 'Invalid school reference. Please contact administrator.'
+        statusCode = 400
+      } else {
+        errorMessage = error.message || 'Internal server error'
+      }
+    }
+    
     return NextResponse.json({ 
-      error: 'Internal server error' 
-    }, { status: 500 })
+      error: errorMessage,
+      details: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.message : undefined) : undefined
+    }, { status: statusCode })
   }
 }

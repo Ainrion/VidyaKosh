@@ -224,3 +224,5 @@ The teacher invitation system is now **fully functional** and provides a seamles
 Teachers can now be properly onboarded through a controlled invitation process, ensuring they are assigned to the correct school and have appropriate access permissions from the start. This eliminates the previous issues with manual school assignment and provides a much better user experience for both administrators and teachers.
 
 
+
+

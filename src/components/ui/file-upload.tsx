@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -35,6 +35,7 @@ export function FileUpload({
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const validateFile = useCallback((file: File): string | null => {
@@ -62,18 +63,27 @@ export function FileUpload({
       return
     }
 
+    // Set the selected file and start progress simulation
+    setSelectedFile(file)
+    
     // Simulate upload progress
     const progressInterval = setInterval(() => {
       setUploadProgress(prev => {
         if (prev >= 100) {
           clearInterval(progressInterval)
-          onFileSelect(file)
           return 100
         }
         return prev + 10
       })
     }, 100)
-  }, [validateFile, onFileSelect])
+  }, [validateFile])
+
+  // Call onFileSelect when upload progress is complete
+  useEffect(() => {
+    if (uploadProgress === 100 && selectedFile) {
+      onFileSelect(selectedFile)
+    }
+  }, [uploadProgress, selectedFile, onFileSelect])
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -112,6 +122,13 @@ export function FileUpload({
     }
   }, [handleFileSelect])
 
+  const handleFileRemove = useCallback(() => {
+    setSelectedFile(null)
+    setUploadProgress(0)
+    setError(null)
+    onFileRemove()
+  }, [onFileRemove])
+
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes'
     const k = 1024
@@ -131,18 +148,22 @@ export function FileUpload({
         disabled={disabled}
       />
 
-      {existingFile ? (
+      {existingFile || selectedFile ? (
         <Card className="p-4 border-green-200 bg-green-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <CheckCircle className="h-5 w-5 text-green-600" />
               <div>
-                <p className="font-medium text-green-800">{existingFile.name}</p>
-                <p className="text-sm text-green-600">{formatFileSize(existingFile.size)}</p>
+                <p className="font-medium text-green-800">
+                  {existingFile?.name || selectedFile?.name}
+                </p>
+                <p className="text-sm text-green-600">
+                  {formatFileSize(existingFile?.size || selectedFile?.size || 0)}
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {existingFile.url && (
+              {existingFile?.url && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -154,7 +175,7 @@ export function FileUpload({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={onFileRemove}
+                onClick={handleFileRemove}
                 disabled={disabled}
                 className="text-red-600 hover:text-red-700"
               >

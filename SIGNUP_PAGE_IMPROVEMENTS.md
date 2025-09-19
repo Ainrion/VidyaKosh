@@ -197,3 +197,5 @@ The updated signup page now provides:
 The signup page now perfectly complements the teacher invitation system, providing a smooth and intuitive experience for all user types while encouraging the use of the proper invitation flow for better school management and security.
 
 
+
+

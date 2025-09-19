@@ -56,6 +56,7 @@ export default function TeacherInvitationsPage() {
   const [creating, setCreating] = useState(false)
   const [newInvitation, setNewInvitation] = useState({
     email: '',
+    message: '',
     expiresInDays: 7
   })
   const [activeTab, setActiveTab] = useState('create')
@@ -69,13 +70,14 @@ export default function TeacherInvitationsPage() {
 
   const fetchInvitations = async () => {
     try {
-      const response = await fetch('/api/invitations?role=teacher')
+      const response = await fetch('/api/invitations/teachers')
       if (response.ok) {
         const data = await response.json()
         setInvitations(data.invitations || [])
       } else {
-        console.error('Failed to fetch teacher invitations')
-        toast.error('Failed to load teacher invitations')
+        console.error('Failed to fetch teacher invitations:', response.status, response.statusText)
+        const errorData = await response.json().catch(() => ({}))
+        toast.error(errorData.error || 'Failed to load teacher invitations')
       }
     } catch (error) {
       console.error('Error fetching teacher invitations:', error)
@@ -90,12 +92,12 @@ export default function TeacherInvitationsPage() {
     setCreating(true)
 
     try {
-      const response = await fetch('/api/invitations', {
+      const response = await fetch('/api/invitations/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: newInvitation.email,
-          role: 'teacher',
+          message: newInvitation.message,
           expiresInDays: newInvitation.expiresInDays
         })
       })
@@ -103,7 +105,7 @@ export default function TeacherInvitationsPage() {
       if (response.ok) {
         const data = await response.json()
         toast.success(`Teacher invitation sent to ${newInvitation.email}`)
-        setNewInvitation({ email: '', expiresInDays: 7 })
+        setNewInvitation({ email: '', message: '', expiresInDays: 7 })
         setActiveTab('manage')
         await fetchInvitations()
       } else {

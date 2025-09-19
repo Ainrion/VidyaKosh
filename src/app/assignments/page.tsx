@@ -5,10 +5,11 @@ import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { FileText, Calendar, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { FileText, Calendar, Clock, CheckCircle, AlertCircle, Paperclip } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
+import { useRouter } from 'next/navigation'
 
 type Assignment = Database['public']['Tables']['assignments']['Row'] & {
   course: {
@@ -23,6 +24,7 @@ type Assignment = Database['public']['Tables']['assignments']['Row'] & {
 
 export default function AssignmentsPage() {
   const { profile } = useAuth()
+  const router = useRouter()
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
@@ -38,40 +40,49 @@ export default function AssignmentsPage() {
     }
 
     try {
-      // First get enrolled course IDs
-      const { data: enrollments, error: enrollmentError } = await supabase
-        .from('enrollments')
-        .select('course_id')
-        .eq('student_id', profile.id)
-
-      if (enrollmentError) {
-        console.error('Error fetching enrollments:', enrollmentError)
-        // If it's an RLS error, set empty assignments but don't throw
-        if (enrollmentError.message?.includes('406') || enrollmentError.code === '42501') {
-          console.log('RLS blocking enrollments access, showing empty state')
-          setAssignments([])
-          return
-        }
-        throw enrollmentError
-      }
-
-      const courseIds = enrollments?.map(e => e.course_id) || []
-
-      if (courseIds.length === 0) {
-        setAssignments([])
-        return
-      }
-
-      // Get assignments from enrolled courses
-      const { data, error } = await supabase
+      let query = supabase
         .from('assignments')
         .select(`
           *,
           course:courses(title),
-          assignment_submissions!left(id, submitted_at, grade)
+          assignment_submissions!left(id, submitted_at, grade, student_id)
         `)
-        .in('course_id', courseIds)
-        .order('due_date', { ascending: true })
+
+      // Different logic based on user role
+      if (profile.role === 'student') {
+        // For students: only show assignments from enrolled courses
+        const { data: enrollments, error: enrollmentError } = await supabase
+          .from('enrollments')
+          .select('course_id')
+          .eq('student_id', profile.id)
+
+        if (enrollmentError) {
+          console.error('Error fetching enrollments:', enrollmentError)
+          // If it's an RLS error, set empty assignments but don't throw
+          if (enrollmentError.message?.includes('406') || enrollmentError.code === '42501') {
+            console.log('RLS blocking enrollments access, showing empty state')
+            setAssignments([])
+            return
+          }
+          throw enrollmentError
+        }
+
+        const courseIds = enrollments?.map(e => e.course_id) || []
+
+        if (courseIds.length === 0) {
+          setAssignments([])
+          return
+        }
+
+        query = query.in('course_id', courseIds)
+      } else if (profile.role === 'teacher' || profile.role === 'admin') {
+        // For teachers and admins: show all assignments in their school
+        // The RLS policies should handle filtering by school_id
+        console.log('Fetching assignments for teacher/admin role')
+      }
+
+      // Execute the query
+      const { data, error } = await query.order('due_date', { ascending: true })
 
       if (error) {
         console.error('Error fetching assignments:', error)
@@ -86,9 +97,10 @@ export default function AssignmentsPage() {
 
       const assignmentsWithSubmissions = data?.map(assignment => ({
         ...assignment,
-        submission: assignment.assignment_submissions?.[0]
+        submission: assignment.assignment_submissions?.find(sub => sub.student_id === profile.id)
       })) || []
 
+      console.log(`Fetched ${assignmentsWithSubmissions.length} assignments for ${profile.role}`)
       setAssignments(assignmentsWithSubmissions)
     } catch (error) {
       console.error('Error fetching assignments:', error)
@@ -208,6 +220,28 @@ export default function AssignmentsPage() {
                       {assignment.description || 'No description provided'}
                     </p>
                     
+                    {assignment.attachment_url && (
+                      <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
+                        <div className="flex items-center gap-2">
+                          <Paperclip className="h-4 w-4 text-gray-500" />
+                          <span className="text-sm font-medium text-gray-700">
+                            {assignment.attachment_name || 'Assignment File'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            ({assignment.attachment_size ? `${(assignment.attachment_size / 1024 / 1024).toFixed(1)} MB` : 'Unknown size'})
+                          </span>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-2"
+                          onClick={() => window.open(assignment.attachment_url, '_blank')}
+                        >
+                          Download File
+                        </Button>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                       {assignment.due_date && (
                         <div className="flex items-center gap-1">
@@ -240,7 +274,11 @@ export default function AssignmentsPage() {
                     )}
                     
                     <div className="flex gap-2">
-                      <Button size="sm" className="flex-1">
+                      <Button 
+                        size="sm" 
+                        className="flex-1"
+                        onClick={() => router.push(`/assignments/${assignment.id}`)}
+                      >
                         View Assignment
                       </Button>
                       {!assignment.submission && (

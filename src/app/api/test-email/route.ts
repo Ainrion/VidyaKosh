@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { to, subject = 'Test Email from Vidyakosh', message = 'This is a test email to verify your email configuration.' } = body
+    const { to, subject = 'Test Email from Riven', message = 'This is a test email to verify your email configuration.' } = body
 
     if (!to) {
       return NextResponse.json({ error: 'Email address is required' }, { status: 400 })

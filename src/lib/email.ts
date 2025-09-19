@@ -1,5 +1,5 @@
-// Email service for Vidyakosh LMS
-// Supports multiple email providers: Resend, SendGrid, Nodemailer
+// Email service for Riven LMS
+// Supports Nodemailer (SMTP) as primary provider with SendGrid fallback
 
 interface EmailOptions {
   to: string
@@ -18,11 +18,18 @@ interface InvitationEmailData {
   invitationUrl: string
   message?: string
   expiresAt: string
+  // Teacher-specific fields
+  role?: 'student' | 'teacher'
+  joinUrl?: string
+  joinToken?: string
 }
 
 // Email template for school invitations
 export function generateInvitationEmail(data: InvitationEmailData): { html: string; text: string } {
-  const { recipientName, schoolName, inviterName, invitationUrl, message, expiresAt } = data
+  const { recipientName, schoolName, inviterName, invitationUrl, message, expiresAt, role, joinUrl } = data
+  
+  // Check if this is a teacher invitation
+  const isTeacherInvitation = role === 'teacher' && joinUrl;
   
   const html = `
     <!DOCTYPE html>
@@ -30,7 +37,7 @@ export function generateInvitationEmail(data: InvitationEmailData): { html: stri
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>School Invitation - Vidyakosh</title>
+      <title>School Invitation - Riven</title>
       <style>
         body {
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -39,104 +46,220 @@ export function generateInvitationEmail(data: InvitationEmailData): { html: stri
           max-width: 600px;
           margin: 0 auto;
           padding: 20px;
-          background-color: #f8fafc;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
         }
         .container {
           background: white;
-          border-radius: 12px;
+          border-radius: 16px;
           padding: 40px;
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+          position: relative;
+          overflow: hidden;
+        }
+        .container::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 4px;
+          background: linear-gradient(90deg, #667eea, #764ba2);
         }
         .header {
           text-align: center;
           margin-bottom: 30px;
         }
         .logo {
-          font-size: 28px;
-          font-weight: bold;
-          color: #2563eb;
+          font-size: 32px;
+          font-weight: 700;
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
           margin-bottom: 10px;
+          letter-spacing: -1px;
+        }
+        .logo-emoji {
+          font-size: 28px;
+          margin-right: 8px;
         }
         .title {
-          font-size: 24px;
-          font-weight: 600;
+          font-size: 28px;
+          font-weight: 700;
           color: #1f2937;
           margin-bottom: 20px;
+          line-height: 1.2;
         }
         .content {
           margin-bottom: 30px;
         }
+        .greeting {
+          font-size: 18px;
+          color: #374151;
+          margin-bottom: 20px;
+        }
         .invitation-box {
-          background: #f0f9ff;
+          background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
           border: 2px solid #0ea5e9;
-          border-radius: 8px;
-          padding: 20px;
-          margin: 20px 0;
+          border-radius: 12px;
+          padding: 24px;
+          margin: 24px 0;
           text-align: center;
+          position: relative;
+          overflow: hidden;
+        }
+        .invitation-box::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 3px;
+          background: linear-gradient(90deg, #0ea5e9, #06b6d4);
         }
         .invitation-code {
-          font-size: 18px;
-          font-weight: bold;
+          font-size: 24px;
+          font-weight: 800;
           color: #0c4a6e;
-          font-family: monospace;
-          letter-spacing: 2px;
+          font-family: 'Monaco', 'Menlo', monospace;
+          letter-spacing: 3px;
+          background: white;
+          padding: 12px 20px;
+          border-radius: 8px;
+          display: inline-block;
+          margin: 10px 0;
+          border: 2px solid #0ea5e9;
         }
         .cta-button {
           display: inline-block;
-          background: #2563eb;
+          background: linear-gradient(135deg, #667eea, #764ba2);
           color: white;
-          padding: 12px 24px;
+          padding: 16px 32px;
           text-decoration: none;
-          border-radius: 6px;
-          font-weight: 600;
-          margin: 20px 0;
+          border-radius: 12px;
+          font-weight: 700;
+          margin: 24px 0;
+          font-size: 16px;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
         }
         .cta-button:hover {
-          background: #1d4ed8;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
         }
         .footer {
-          margin-top: 30px;
-          padding-top: 20px;
+          margin-top: 40px;
+          padding-top: 24px;
           border-top: 1px solid #e5e7eb;
           font-size: 14px;
           color: #6b7280;
         }
         .expiry {
-          background: #fef3c7;
-          border: 1px solid #f59e0b;
-          border-radius: 6px;
-          padding: 12px;
-          margin: 15px 0;
+          background: linear-gradient(135deg, #fef3c7, #fde68a);
+          border: 2px solid #f59e0b;
+          border-radius: 12px;
+          padding: 16px;
+          margin: 20px 0;
           font-size: 14px;
+          position: relative;
+        }
+        .expiry::before {
+          content: '⏰';
+          font-size: 18px;
+          margin-right: 8px;
+        }
+        .steps {
+          background: #f8fafc;
+          border-radius: 12px;
+          padding: 24px;
+          margin: 24px 0;
+        }
+        .steps h3 {
+          color: #374151;
+          margin-bottom: 16px;
+          font-size: 18px;
+        }
+        .steps ol {
+          margin: 0;
+          padding-left: 20px;
+        }
+        .steps li {
+          margin-bottom: 8px;
+          color: #4b5563;
+        }
+        .brand-footer {
+          text-align: center;
+          margin-top: 32px;
+          padding: 20px;
+          background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+          border-radius: 12px;
+        }
+        .brand-name {
+          font-size: 20px;
+          font-weight: 700;
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          margin-bottom: 8px;
+        }
+        .brand-tagline {
+          color: #6b7280;
+          font-size: 14px;
+        }
+        @media (max-width: 600px) {
+          .container {
+            padding: 24px;
+            margin: 10px;
+          }
+          .title {
+            font-size: 24px;
+          }
+          .invitation-code {
+            font-size: 20px;
+            letter-spacing: 2px;
+          }
         }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="header">
-          <div class="logo">🎓 Vidyakosh</div>
-          <h1 class="title">You're Invited to Join ${schoolName}!</h1>
+          <div class="logo">
+            <span class="logo-emoji">⚡</span>Riven
+          </div>
+          <h1 class="title">You're Invited to Join ${schoolName} as a ${role === 'teacher' ? 'Teacher' : 'Student'}!</h1>
         </div>
         
         <div class="content">
-          <p>Hello ${recipientName || 'there'},</p>
+          <p class="greeting">Hello ${recipientName || 'there'},</p>
           
-          <p><strong>${inviterName}</strong> has invited you to join <strong>${schoolName}</strong> on Vidyakosh, our comprehensive Learning Management System.</p>
+          <p><strong>${inviterName}</strong> has invited you to join <strong>${schoolName}</strong> on Riven, the modern learning platform that connects students, teachers, and administrators.</p>
           
-          ${message ? `<p><em>"${message}"</em></p>` : ''}
+          ${message ? `<div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 16px; margin: 20px 0; border-radius: 8px;"><em>"${message}"</em></div>` : ''}
           
-          <div class="invitation-box">
-            <p><strong>Your Invitation Code:</strong></p>
-            <div class="invitation-code">${data.invitationCode}</div>
-            <p style="margin-top: 10px; font-size: 14px;">Use this code to create your account</p>
+          ${isTeacherInvitation ? `
+          <div class="invitation-box" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">
+            <p style="font-weight: 600; margin-bottom: 16px; color: white;">🎓 Teacher Quick Access</p>
+            <p style="color: white; font-size: 16px; margin: 0;">No code needed! Click the button below for instant access.</p>
           </div>
+          ` : `
+          <div class="invitation-box">
+            <p style="font-weight: 600; margin-bottom: 16px; color: #374151;">Your Invitation Code:</p>
+            <div class="invitation-code">${data.invitationCode}</div>
+            <p style="margin-top: 12px; font-size: 14px; color: #6b7280;">Use this code to create your account</p>
+          </div>
+          `}
           
           <div style="text-align: center;">
-            <a href="${invitationUrl}" class="cta-button">Accept Invitation & Join School</a>
+            <a href="${isTeacherInvitation ? joinUrl : invitationUrl}" class="cta-button">
+              ${isTeacherInvitation ? '🎓 Join as Teacher - Quick Access' : 'Accept Invitation & Join School'}
+            </a>
           </div>
           
           <div class="expiry">
-            <strong>⏰ Important:</strong> This invitation expires on ${new Date(expiresAt).toLocaleDateString('en-US', {
+            <strong>Important:</strong> This invitation expires on ${new Date(expiresAt).toLocaleDateString('en-US', {
               year: 'numeric',
               month: 'long',
               day: 'numeric',
@@ -145,23 +268,36 @@ export function generateInvitationEmail(data: InvitationEmailData): { html: stri
             })}
           </div>
           
-          <h3>What's Next?</h3>
-          <ol>
-            <li>Click the "Accept Invitation" button above</li>
-            <li>Create your account using the invitation code</li>
-            <li>Start exploring your school's courses and resources</li>
-          </ol>
+          <div class="steps">
+            <h3>What's Next?</h3>
+            ${isTeacherInvitation ? `
+            <ol>
+              <li>Click the "Join as Teacher" button above</li>
+              <li>Complete your teacher profile setup</li>
+              <li>Access your teacher dashboard and tools</li>
+              <li>Start creating courses and managing your classes</li>
+            </ol>
+            ` : `
+            <ol>
+              <li>Click the "Accept Invitation" button above</li>
+              <li>Create your account using the invitation code</li>
+              <li>Start exploring your school's courses and resources</li>
+              <li>Connect with your teachers and classmates</li>
+            </ol>
+            `}
+          </div>
           
-          <p>If you have any questions, please contact your school administrator or reply to this email.</p>
+          <p style="color: #6b7280; font-size: 14px;">If you have any questions, please contact your school administrator or reply to this email.</p>
         </div>
         
         <div class="footer">
           <p>This invitation was sent by ${inviterName} from ${schoolName}.</p>
           <p>If you didn't expect this invitation, you can safely ignore this email.</p>
-          <p style="margin-top: 20px;">
-            <strong>Vidyakosh LMS</strong><br>
-            Comprehensive Learning Management System for Schools
-          </p>
+        </div>
+        
+        <div class="brand-footer">
+          <div class="brand-name">⚡ Riven</div>
+          <div class="brand-tagline">Modern Learning Management System</div>
         </div>
       </div>
     </body>
@@ -169,17 +305,22 @@ export function generateInvitationEmail(data: InvitationEmailData): { html: stri
   `
 
   const text = `
-🎓 Vidyakosh - School Invitation
+⚡ Riven - School Invitation
 
 Hello ${recipientName || 'there'},
 
-${inviterName} has invited you to join ${schoolName} on Vidyakosh, our comprehensive Learning Management System.
+${inviterName} has invited you to join ${schoolName} as a ${role === 'teacher' ? 'teacher' : 'student'} on Riven, the modern learning platform that connects students, teachers, and administrators.
 
 ${message ? `Message: "${message}"` : ''}
 
+${isTeacherInvitation ? `
+🎓 Teacher Quick Access
+No code needed! Click the link below for instant access.
+` : `
 Your Invitation Code: ${data.invitationCode}
+`}
 
-Accept your invitation: ${invitationUrl}
+${isTeacherInvitation ? `Join as Teacher: ${joinUrl}` : `Accept your invitation: ${invitationUrl}`}
 
 ⏰ Important: This invitation expires on ${new Date(expiresAt).toLocaleDateString('en-US', {
     year: 'numeric',
@@ -193,56 +334,20 @@ What's Next?
 1. Click the invitation link above
 2. Create your account using the invitation code
 3. Start exploring your school's courses and resources
+4. Connect with your teachers and classmates
 
 If you have any questions, please contact your school administrator.
 
 This invitation was sent by ${inviterName} from ${schoolName}.
 If you didn't expect this invitation, you can safely ignore this email.
 
-Vidyakosh LMS - Comprehensive Learning Management System for Schools
+⚡ Riven - Modern Learning Management System
   `
 
   return { html, text }
 }
 
-// Send email using Resend (recommended)
-export async function sendEmailWithResend(options: EmailOptions): Promise<boolean> {
-  try {
-    const resendApiKey = process.env.RESEND_API_KEY
-    if (!resendApiKey) {
-      console.error('RESEND_API_KEY not found in environment variables')
-      return false
-    }
-
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: options.from || 'Vidyakosh <onboarding@resend.dev>',
-        to: [options.to],
-        subject: options.subject,
-        html: options.html,
-        text: options.text,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      console.error('Resend API error:', errorData)
-      return false
-    }
-
-    const result = await response.json()
-    console.log('Email sent successfully with Resend:', result.id)
-    return true
-  } catch (error) {
-    console.error('Error sending email with Resend:', error)
-    return false
-  }
-}
+// Resend functionality removed - using Nodemailer only
 
 // Send email using SendGrid
 export async function sendEmailWithSendGrid(options: EmailOptions): Promise<boolean> {
@@ -289,42 +394,93 @@ export async function sendEmailWithSendGrid(options: EmailOptions): Promise<bool
 // Send email using Nodemailer (SMTP)
 export async function sendEmailWithNodemailer(options: EmailOptions): Promise<boolean> {
   try {
-    // This would require nodemailer package
-    // For now, we'll return false and suggest using Resend or SendGrid
-    console.error('Nodemailer not implemented. Please use Resend or SendGrid.')
-    return false
+    const nodemailer = await import('nodemailer')
+    
+    // Check for required SMTP environment variables
+    const smtpHost = process.env.SMTP_HOST
+    const smtpPort = process.env.SMTP_PORT || '587'
+    const smtpUser = process.env.SMTP_USER
+    const smtpPass = process.env.SMTP_PASS
+    const smtpFrom = process.env.SMTP_FROM || smtpUser
+
+    if (!smtpHost || !smtpUser || !smtpPass) {
+      console.error('SMTP configuration missing. Required: SMTP_HOST, SMTP_USER, SMTP_PASS')
+      return false
+    }
+
+    console.log('Configuring Nodemailer with SMTP settings...', {
+      host: smtpHost,
+      port: smtpPort,
+      user: smtpUser,
+      from: smtpFrom
+    })
+
+    // Create transporter
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: parseInt(smtpPort),
+      secure: smtpPort === '465', // true for 465, false for other ports
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+      // Additional options for better compatibility
+      tls: {
+        rejectUnauthorized: false // For self-signed certificates
+      }
+    })
+
+    // Verify connection configuration
+    try {
+      await transporter.verify()
+      console.log('✅ SMTP server connection verified successfully')
+    } catch (verifyError) {
+      console.error('❌ SMTP server connection verification failed:', verifyError)
+      return false
+    }
+
+    // Send email
+    const mailOptions = {
+      from: smtpFrom,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      text: options.text,
+    }
+
+    const info = await transporter.sendMail(mailOptions)
+    console.log('✅ Email sent successfully with Nodemailer:', {
+      messageId: info.messageId,
+      accepted: info.accepted,
+      rejected: info.rejected
+    })
+
+    return true
   } catch (error) {
-    console.error('Error sending email with Nodemailer:', error)
+    console.error('❌ Error sending email with Nodemailer:', error)
     return false
   }
 }
 
-// Main email sending function with fallback
+// Main email sending function
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   console.log('Attempting to send email to:', options.to)
   
-  // Try Resend first (recommended)
-  if (process.env.RESEND_API_KEY) {
-    console.log('Trying Resend...')
-    const success = await sendEmailWithResend(options)
-    if (success) return true
-  }
-
-  // Fallback to SendGrid
-  if (process.env.SENDGRID_API_KEY) {
-    console.log('Trying SendGrid...')
-    const success = await sendEmailWithSendGrid(options)
-    if (success) return true
-  }
-
-  // Fallback to Nodemailer
-  if (process.env.SMTP_HOST) {
-    console.log('Trying Nodemailer...')
+  // Try Nodemailer (primary email provider)
+  if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+    console.log('Sending email with Nodemailer (SMTP)...')
     const success = await sendEmailWithNodemailer(options)
     if (success) return true
   }
 
-  console.error('All email providers failed. Please check your email configuration.')
+  // Fallback to SendGrid (optional)
+  if (process.env.SENDGRID_API_KEY) {
+    console.log('Trying SendGrid fallback...')
+    const success = await sendEmailWithSendGrid(options)
+    if (success) return true
+  }
+
+  console.error('Email sending failed. Please configure SMTP settings in your .env.local file.')
   return false
 }
 
@@ -334,7 +490,7 @@ export async function sendInvitationEmail(data: InvitationEmailData): Promise<bo
   
   return await sendEmail({
     to: data.recipientEmail,
-    subject: `🎓 You're invited to join ${data.schoolName} on Vidyakosh!`,
+    subject: `⚡ You're invited to join ${data.schoolName} on Riven!`,
     html,
     text,
   })
@@ -342,26 +498,28 @@ export async function sendInvitationEmail(data: InvitationEmailData): Promise<bo
 
 // Test email configuration
 export async function testEmailConfiguration(): Promise<{
-  resend: boolean
   sendgrid: boolean
   smtp: boolean
   message: string
+  priority: string
 }> {
   const result = {
-    resend: !!process.env.RESEND_API_KEY,
     sendgrid: !!process.env.SENDGRID_API_KEY,
     smtp: !!(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS),
-    message: ''
+    message: '',
+    priority: ''
   }
 
-  if (result.resend) {
-    result.message = 'Resend is configured and ready to use'
+  // Check configuration status
+  if (result.smtp) {
+    result.message = 'Nodemailer (SMTP) is configured and ready to use'
+    result.priority = 'Nodemailer (SMTP) → SendGrid (fallback)'
   } else if (result.sendgrid) {
-    result.message = 'SendGrid is configured and ready to use'
-  } else if (result.smtp) {
-    result.message = 'SMTP is configured and ready to use'
+    result.message = 'SendGrid is configured as primary email provider'
+    result.priority = 'SendGrid only'
   } else {
-    result.message = 'No email provider configured. Please set up Resend, SendGrid, or SMTP.'
+    result.message = 'No email provider configured. Please set up SMTP settings.'
+    result.priority = 'None configured'
   }
 
   return result
