@@ -108,8 +108,12 @@ export default function SignupPage() {
         throw new Error(data.error || 'Account creation failed')
       }
 
-      // Success - redirect to login
+      // Success - show admin-specific message and redirect to login
+      if (data.message && data.message.includes('ready to login')) {
+        toastMessages.auth.adminSignupSuccess()
+      } else {
         toastMessages.auth.signupSuccess()
+      }
       router.push('/login?message=admin-created')
     } catch (error: any) {
       console.error('Admin signup error:', error)

@@ -136,18 +136,47 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create user account with email confirmation
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
-        data: {
+    // Create service role client for admin operations and profile management
+    const serviceSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // Create user account - bypass email confirmation for admins
+    let authData, authError
+    
+    if (role === 'admin') {
+      // For admins, create user directly without email confirmation using service role
+      console.log('Creating admin user without email confirmation')
+      
+      const result = await serviceSupabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true, // Auto-confirm admin accounts
+        user_metadata: {
           full_name: fullName,
           role: role
         }
-      }
-    })
+      })
+      authData = result.data
+      authError = result.error
+    } else {
+      // For teachers and students, use normal signup with email confirmation
+      console.log('Creating user with email confirmation')
+      const result = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
+          data: {
+            full_name: fullName,
+            role: role
+          }
+        }
+      })
+      authData = result.data
+      authError = result.error
+    }
 
     if (authError) {
       console.error('Auth signup error:', authError)
@@ -165,11 +194,31 @@ export async function POST(request: NextRequest) {
     // Handle school assignment/creation
     let schoolIdToUse = schoolId
 
-    // For admin role and new school registration, schoolId should be provided from school creation
+    // For admin role, create school from schoolName if not provided
     if (!schoolIdToUse && role === 'admin' && schoolName) {
-      return NextResponse.json({ 
-        error: 'School must be created first for admin registration' 
-      }, { status: 400 })
+      console.log('Creating school for admin:', schoolName)
+      
+      // Create new school for admin
+      const { data: newSchool, error: createError } = await serviceSupabase
+        .from('schools')
+        .insert({
+          name: schoolName.trim(),
+          address: 'To be updated',
+          email: `admin@${schoolName.toLowerCase().replace(/\s+/g, '')}.edu`,
+          phone: 'To be updated'
+        })
+        .select()
+        .single()
+
+      if (createError) {
+        console.error('Error creating school for admin:', createError)
+        return NextResponse.json({ 
+          error: 'Failed to create school. Please try again.' 
+        }, { status: 500 })
+      }
+
+      schoolIdToUse = newSchool.id
+      console.log('School created for admin:', schoolIdToUse)
     }
 
     // For teachers, try to find existing school by name or create a new one
@@ -255,9 +304,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create user profile
-    const profileData: any = {
-      id: authData.user.id,
+    // Use the service role client created earlier for profile operations
+
+    // Profile should be created automatically by trigger, so we just need to update it
+    console.log('Updating profile with school and additional data')
+    
+    const updateData: any = {
       school_id: schoolIdToUse,
       full_name: fullName,
       email: email,
@@ -266,60 +318,28 @@ export async function POST(request: NextRequest) {
 
     // For students and teachers signing up with invitation, mark school access as granted
     if ((role === 'student' || role === 'teacher') && invitationCode && invitation) {
-      profileData.school_access_granted = true
-      profileData.school_access_granted_at = new Date().toISOString()
-      profileData.invitation_id = invitation.id
+      updateData.school_access_granted = true
+      updateData.school_access_granted_at = new Date().toISOString()
+      updateData.invitation_id = invitation.id
     }
 
-    // Use service role client for profile operations to bypass RLS
-    const serviceSupabase = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    // Try to insert the profile, but if it fails due to conflict (trigger created it), update it instead
-    const { data: profile, error: profileError } = await serviceSupabase
+    // Update the profile (created by trigger) with correct data
+    const { data: finalProfile, error: updateError } = await serviceSupabase
       .from('profiles')
-      .insert(profileData)
+      .update(updateData)
+      .eq('id', authData.user.id)
       .select()
       .single()
 
-    let finalProfile = profile
-
-    if (profileError && profileError.code === '23505') {
-      // Profile already exists (created by trigger), update it with correct data
-      console.log('Profile exists, updating with correct data')
-      const { data: updatedProfile, error: updateError } = await serviceSupabase
-        .from('profiles')
-        .update({
-          school_id: schoolIdToUse,
-          full_name: fullName,
-          role: role,
-          email: email
-        })
-        .eq('id', authData.user.id)
-        .select()
-        .single()
-
-      if (updateError) {
-        console.error('Profile update error:', updateError)
-        return NextResponse.json({ 
-          error: 'Failed to update user profile',
-          details: updateError.message
-        }, { status: 500 })
-      }
-      
-      finalProfile = updatedProfile
-      console.log('Profile updated successfully:', finalProfile)
-    } else if (profileError) {
-      console.error('Profile creation error:', profileError)
+    if (updateError) {
+      console.error('Profile update error:', updateError)
       return NextResponse.json({ 
-        error: 'Failed to create user profile',
-        details: profileError.message
+        error: 'Failed to update user profile',
+        details: updateError.message
       }, { status: 500 })
-    } else {
-      console.log('Profile created successfully:', finalProfile)
     }
+    
+    console.log('Profile updated successfully:', finalProfile)
 
     // If student or teacher signed up with invitation, update invitation status
     if ((role === 'student' || role === 'teacher') && invitationCode && invitation) {
@@ -350,9 +370,9 @@ export async function POST(request: NextRequest) {
       success: true, 
       user: authData.user,
       profile: finalProfile,
-      message: 'User created successfully',
-      emailConfirmationSent: !authData.user.email_confirmed_at,
-      requiresEmailConfirmation: !authData.user.email_confirmed_at
+      message: role === 'admin' ? 'Admin account created successfully - ready to login!' : 'User created successfully',
+      emailConfirmationSent: role !== 'admin' && !authData.user.email_confirmed_at,
+      requiresEmailConfirmation: role !== 'admin' && !authData.user.email_confirmed_at
     })
   } catch (error) {
     console.error('Error in signup:', error)

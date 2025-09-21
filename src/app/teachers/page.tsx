@@ -4,6 +4,9 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useRouter } from 'next/navigation'
 import { 
   Mail, 
@@ -25,20 +28,67 @@ import Link from 'next/link'
 
 export default function TeachersPage() {
   const router = useRouter()
+  const [showSchoolCodeModal, setShowSchoolCodeModal] = useState(false)
+  const [schoolCode, setSchoolCode] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [schoolInfo, setSchoolInfo] = useState<{name: string, address: string} | null>(null)
+  const [modalMode, setModalMode] = useState<'apply' | 'invite'>('apply')
 
   const handleInvitedTeacher = () => {
-    // Redirect to existing teacher invitation flow
-    router.push('/join/teacher')
+    // Show school code input modal for invitation flow
+    setModalMode('invite')
+    setShowSchoolCodeModal(true)
   }
 
   const handleApplyToSchool = () => {
-    // Redirect to school directory
-    router.push('/schools')
+    // Show school code input modal for application flow
+    setModalMode('apply')
+    setShowSchoolCodeModal(true)
   }
 
   const handleAdminSignup = () => {
     // Redirect to admin signup
     router.push('/signup?role=admin')
+  }
+
+  const handleSchoolCodeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    setError('')
+
+    try {
+      // Validate school code
+      const response = await fetch('/api/schools/validate-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ schoolCode: schoolCode.toUpperCase() }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Invalid school code')
+      }
+
+      setSchoolInfo(data.school)
+    } catch (err: any) {
+      setError(err.message || 'Failed to validate school code')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleApplyWithCode = () => {
+    if (modalMode === 'invite') {
+      // Redirect to teacher join page for invitation flow
+      router.push(`/teachers/join?code=${schoolCode}`)
+    } else {
+      // Redirect to teacher application form for application flow
+      router.push(`/teachers/apply?code=${schoolCode}`)
+    }
   }
 
   return (
@@ -338,6 +388,82 @@ export default function TeachersPage() {
           </div>
         </div>
       </div>
+
+      {/* School Code Modal */}
+      <Dialog open={showSchoolCodeModal} onOpenChange={setShowSchoolCodeModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {modalMode === 'invite' ? 'Join with Invitation' : 'Apply to School'}
+            </DialogTitle>
+            <DialogDescription>
+              {modalMode === 'invite' 
+                ? 'Enter the school code provided by the school administrator to join the school.'
+                : 'Enter the school code provided by the school administrator to apply as a teacher.'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleSchoolCodeSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="schoolCode">School Code</Label>
+              <Input
+                id="schoolCode"
+                type="text"
+                placeholder="Enter school code (e.g., ABC12345)"
+                value={schoolCode}
+                onChange={(e) => setSchoolCode(e.target.value.toUpperCase())}
+                className="uppercase"
+                required
+              />
+            </div>
+
+            {error && (
+              <div className="text-red-600 text-sm">{error}</div>
+            )}
+
+            {schoolInfo && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <div className="flex items-center">
+                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                  <div>
+                    <div className="font-medium text-green-800">{schoolInfo.name}</div>
+                    <div className="text-sm text-green-600">{schoolInfo.address}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex space-x-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowSchoolCodeModal(false)}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              {schoolInfo ? (
+                <Button
+                  type="button"
+                  onClick={handleApplyWithCode}
+                  className="flex-1"
+                >
+                  {modalMode === 'invite' ? 'Join School' : 'Apply to School'}
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={loading || !schoolCode}
+                  className="flex-1"
+                >
+                  {loading ? 'Validating...' : 'Validate Code'}
+                </Button>
+              )}
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -78,6 +78,14 @@ export const toastMessages = {
       "Account created successfully!",
       "Please check your email for verification link"
     ),
+    adminSignupSuccess: () => showToast.success(
+      "Admin account created successfully!",
+      "Your admin account is ready - you can login immediately!"
+    ),
+    teacherApplicationSuccess: () => showToast.success(
+      "Application submitted successfully!",
+      "Your teacher application has been sent to the admin for review."
+    ),
     signupError: (error: string) => showToast.error(
       "Signup failed",
       error
