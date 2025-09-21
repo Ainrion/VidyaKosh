@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServiceClient } from '@/lib/supabase/service'
 
 // GET /api/invitations/validate - Validate invitation code
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = createServiceClient()
     const { searchParams } = new URL(request.url)
     const code = searchParams.get('code')
 
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 // POST /api/invitations/validate - Accept invitation and create account
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
+    const supabase = createServiceClient()
     const body = await request.json()
     const { invitationCode, email, password, fullName } = body
 

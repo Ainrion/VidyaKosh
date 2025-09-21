@@ -402,13 +402,13 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
+                <div className="h-12 w-12 rounded-xl bg-white flex items-center justify-center shadow-lg">
                   <Image 
-                    src="/r-logo.svg" 
+                    src="/logo.png" 
                     alt="Riven Logo" 
-                    width={40} 
-                    height={40}
-                    className="h-10 w-10"
+                    width={24} 
+                    height={24}
+                    className="h-8 w-8"
                   />
                 </div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -445,7 +445,7 @@ export default function Home() {
                   Transform Education Today
                 </div>
 
-                <h1 className="text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
                   The Future of
                   <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                     Learning Management
@@ -502,25 +502,23 @@ export default function Home() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
               >
-                <div className="relative bg-white rounded-2xl shadow-2xl p-8 border border-gray-200/50">
-                  <div className="flex items-center justify-between mb-6">
+                <div className="relative bg-white rounded-2xl shadow-2xl border border-gray-200/50 overflow-hidden max-w-4xl">
+                  <div className="flex items-center justify-between p-4 border-b border-gray-100">
                     <div className="flex items-center space-x-3">
                       <div className="h-3 w-3 bg-red-500 rounded-full"></div>
                       <div className="h-3 w-3 bg-yellow-500 rounded-full"></div>
                       <div className="h-3 w-3 bg-green-500 rounded-full"></div>
                     </div>
                   </div>
-                  <div className="space-y-4">
-                    <div className="h-4 bg-gradient-to-r from-blue-200 to-purple-200 rounded-full w-3/4"></div>
-                    <div className="h-4 bg-gradient-to-r from-green-200 to-blue-200 rounded-full w-1/2"></div>
-                    <div className="h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg flex items-center justify-center">
-                      <div className="text-gray-500 text-sm">Interactive Dashboard Preview</div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg"></div>
-                      <div className="h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-lg"></div>
-                      <div className="h-12 bg-gradient-to-br from-green-100 to-green-200 rounded-lg"></div>
-                    </div>
+                  <div className="p-2">
+                    <Image 
+                      src="/dashboard.png" 
+                      alt="Riven Dashboard Preview" 
+                      width={800} 
+                      height={600}
+                      className="w-full h-auto rounded-lg"
+                      priority
+                    />
                   </div>
                 </div>
               </motion.div>
@@ -650,7 +648,7 @@ export default function Home() {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="border-2 border-white text-white hover:bg-white hover:text-blue-600 font-semibold px-8 py-4 text-lg"
+                className="border-2 border-white text-blue-600 bg-white hover:bg-gray-100 hover:text-blue-500  font-semibold px-8 py-4 text-lg"
                 asChild
               >
                 <Link href="/login">
@@ -668,13 +666,13 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               <div className="col-span-1 md:col-span-2">
                 <div className="flex items-center space-x-3 mb-6">
-                  <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center">
+                  <div className="h-12 w-12 rounded-xl bg-white flex items-center justify-center">
                     <Image 
-                      src="/r-logo.svg" 
+                      src="/logo.png" 
                       alt="Riven Logo" 
-                      width={40} 
-                      height={40}
-                      className="h-10 w-10"
+                      width={24} 
+                      height={24}
+                      className="h-8 w-8"
                     />
                   </div>
                   <span className="text-2xl font-bold">Riven</span>

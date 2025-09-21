@@ -171,7 +171,7 @@ export default function ReportsPage() {
               <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
               <div className="h-4 w-4">
                 <Image 
-                  src="/r-logo.svg" 
+                  src="/logo.png" 
                   alt="Riven Logo" 
                   width={16} 
                   height={16}

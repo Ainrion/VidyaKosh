@@ -49,6 +49,317 @@ interface TeacherInvitation {
   }
 }
 
+interface TeacherApplication {
+  id: string
+  teacher_email: string
+  teacher_name: string
+  school_id: string
+  message: string
+  status: 'pending' | 'approved' | 'rejected'
+  created_at: string
+  reviewed_at?: string
+  reviewed_by?: string
+  rejection_reason?: string
+}
+
+function SchoolCodeDisplay({ schoolId }: { schoolId: string }) {
+  const [schoolCode, setSchoolCode] = useState<string>('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchSchoolCode()
+  }, [schoolId])
+
+  const fetchSchoolCode = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/schools/info')
+      if (response.ok) {
+        const data = await response.json()
+        setSchoolCode(data.school?.school_code || '')
+      }
+    } catch (error) {
+      console.error('Error fetching school code:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const copySchoolCode = async () => {
+    try {
+      await navigator.clipboard.writeText(schoolCode)
+      toast.success('School code copied to clipboard!')
+    } catch (error) {
+      toast.error('Failed to copy school code')
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card className="border-blue-200 bg-blue-50">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <RefreshCw className="h-5 w-5 animate-spin text-blue-600 mr-2" />
+            <span className="text-blue-700">Loading school code...</span>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!schoolCode) {
+    return null
+  }
+
+  return (
+    <Card className="border-blue-200 bg-blue-50">
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-blue-900 mb-2">Your School Code</h3>
+            <p className="text-blue-700 mb-3">
+              Share this code with teachers so they can apply directly to your school
+            </p>
+            <div className="flex items-center gap-3">
+              <div className="text-3xl font-bold text-blue-900 font-mono bg-white px-4 py-2 rounded-lg border-2 border-blue-300">
+                {schoolCode}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-blue-600 text-blue-600 hover:bg-blue-100"
+                onClick={copySchoolCode}
+              >
+                <Copy className="h-4 w-4 mr-1" />
+                Copy Code
+              </Button>
+            </div>
+          </div>
+          <div className="text-right">
+            <div className="text-sm text-blue-600 mb-1">Alternative to Email Invites</div>
+            <div className="text-xs text-blue-500">Teachers can apply directly with this code</div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function TeacherApplicationsTab() {
+  const { profile } = useAuth()
+  const [applications, setApplications] = useState<TeacherApplication[]>([])
+  const [loading, setLoading] = useState(true)
+  const [processing, setProcessing] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (profile?.school_id) {
+      fetchTeacherApplications()
+    }
+  }, [profile?.school_id])
+
+  const fetchTeacherApplications = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/admin/teacher-applications')
+      const data = await response.json()
+
+      if (response.ok) {
+        setApplications(data.applications || [])
+      } else {
+        toast.error('Failed to fetch teacher applications')
+      }
+    } catch (error) {
+      console.error('Error fetching teacher applications:', error)
+      toast.error('Failed to fetch teacher applications')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleApprove = async (applicationId: string) => {
+    try {
+      setProcessing(applicationId)
+      const response = await fetch(`/api/admin/teacher-applications/${applicationId}/approve`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success('Teacher application approved successfully!')
+        fetchTeacherApplications()
+      } else {
+        toast.error(data.error || 'Failed to approve application')
+      }
+    } catch (error) {
+      console.error('Error approving application:', error)
+      toast.error('Failed to approve application')
+    } finally {
+      setProcessing(null)
+    }
+  }
+
+  const handleReject = async (applicationId: string, reason?: string) => {
+    try {
+      setProcessing(applicationId)
+      const response = await fetch(`/api/admin/teacher-applications/${applicationId}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ rejection_reason: reason }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        toast.success('Teacher application rejected')
+        fetchTeacherApplications()
+      } else {
+        toast.error(data.error || 'Failed to reject application')
+      }
+    } catch (error) {
+      console.error('Error rejecting application:', error)
+      toast.error('Failed to reject application')
+    } finally {
+      setProcessing(null)
+    }
+  }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="border-yellow-500 text-yellow-700">Pending</Badge>
+      case 'approved':
+        return <Badge variant="outline" className="border-green-500 text-green-700">Approved</Badge>
+      case 'rejected':
+        return <Badge variant="outline" className="border-red-500 text-red-700">Rejected</Badge>
+      default:
+        return <Badge variant="outline">{status}</Badge>
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-8">
+          <div className="flex items-center justify-center">
+            <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+            <span className="ml-2 text-gray-600">Loading teacher applications...</span>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Teacher Applications
+          </CardTitle>
+          <CardDescription>
+            Review and manage teacher applications for your school
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      {applications.length === 0 ? (
+        <Card>
+          <CardContent className="p-8 text-center">
+            <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Applications Yet</h3>
+            <p className="text-gray-600">
+              Teacher applications will appear here when teachers apply to your school using the school code.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          <AnimatePresence>
+            {applications.map((application) => (
+              <motion.div
+                key={application.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Card>
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-lg font-semibold text-gray-900">
+                            {application.teacher_name}
+                          </h3>
+                          {getStatusBadge(application.status)}
+                        </div>
+                        <div className="space-y-1 text-sm text-gray-600">
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4" />
+                            {application.teacher_email}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4" />
+                            Applied on {new Date(application.created_at).toLocaleDateString()}
+                          </div>
+                          {application.message && (
+                            <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                              <p className="text-sm text-gray-700">{application.message}</p>
+                            </div>
+                          )}
+                          {application.rejection_reason && (
+                            <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                              <p className="text-sm text-red-700">
+                                <strong>Rejection reason:</strong> {application.rejection_reason}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      {application.status === 'pending' && (
+                        <div className="flex gap-2 ml-4">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-green-600 text-green-600 hover:bg-green-50"
+                            onClick={() => handleApprove(application.id)}
+                            disabled={processing === application.id}
+                          >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            {processing === application.id ? 'Approving...' : 'Approve'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-red-600 text-red-600 hover:bg-red-50"
+                            onClick={() => handleReject(application.id)}
+                            disabled={processing === application.id}
+                          >
+                            <XCircle className="h-4 w-4 mr-1" />
+                            {processing === application.id ? 'Rejecting...' : 'Reject'}
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function TeacherInvitationsPage() {
   const { profile } = useAuth()
   const [invitations, setInvitations] = useState<TeacherInvitation[]>([])
@@ -259,6 +570,11 @@ export default function TeacherInvitationsPage() {
         </div>
       </div>
 
+      {/* School Code Display */}
+      {profile?.school_id && (
+        <SchoolCodeDisplay schoolId={profile.school_id} />
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="border-0 shadow-lg bg-gradient-to-br from-yellow-50 to-orange-50">
@@ -300,7 +616,7 @@ export default function TeacherInvitationsPage() {
 
       {/* Main Content */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="create" className="flex items-center gap-2">
             <UserPlus className="h-4 w-4" />
             Create Invitation
@@ -308,6 +624,10 @@ export default function TeacherInvitationsPage() {
           <TabsTrigger value="manage" className="flex items-center gap-2">
             <Users className="h-4 w-4" />
             Manage Invitations
+          </TabsTrigger>
+          <TabsTrigger value="applications" className="flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Teacher Applications
           </TabsTrigger>
         </TabsList>
 
@@ -512,6 +832,10 @@ export default function TeacherInvitationsPage() {
               </AnimatePresence>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="applications" className="space-y-6">
+          <TeacherApplicationsTab />
         </TabsContent>
       </Tabs>
     </div>

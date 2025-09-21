@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createClient as createServiceClient } from '@supabase/supabase-js'
+import { createServiceClient } from '@/lib/supabase/service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,9 +47,9 @@ export async function POST(request: NextRequest) {
       if (invitationCode) {
         console.log('Validating invitation code:', invitationCode, 'for role:', role, 'email:', email)
         
-        // Validate invitation code
-        // First try with role column (new schema), fallback to old schema if column doesn't exist
-        let { data: invitationData, error: invitationError } = await supabase
+        // Validate invitation code using service client to bypass RLS
+        const serviceSupabase = createServiceClient()
+        let { data: invitationData, error: invitationError } = await serviceSupabase
           .from('school_invitations')
           .select(`
             *,
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
         // If the query failed due to missing role column, try without role filter
         if (invitationError && invitationError.code === '42703' && invitationError.message.includes('role')) {
           console.log('Role column not found, trying without role filter')
-          const { data: fallbackData, error: fallbackError } = await supabase
+          const { data: fallbackData, error: fallbackError } = await serviceSupabase
             .from('school_invitations')
             .select(`
               *,
@@ -136,18 +136,44 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create user account with email confirmation
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
-        data: {
+    // Create service role client for admin operations and profile management
+    const serviceSupabase = createServiceClient()
+
+    // Create user account - bypass email confirmation for admins
+    let authData, authError
+    
+    if (role === 'admin' || (invitationCode && invitation)) {
+      // For admins or users with valid invitations, create user directly without email confirmation
+      console.log(`Creating ${role} user without email confirmation (${role === 'admin' ? 'admin' : 'invited user'})`)
+      
+      const result = await serviceSupabase.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true, // Auto-confirm accounts for admins and invited users
+        user_metadata: {
           full_name: fullName,
           role: role
         }
-      }
-    })
+      })
+      authData = result.data
+      authError = result.error
+    } else {
+      // For teachers and students without invitations, use normal signup with email confirmation
+      console.log('Creating user with email confirmation')
+      const result = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/auth/callback`,
+          data: {
+            full_name: fullName,
+            role: role
+          }
+        }
+      })
+      authData = result.data
+      authError = result.error
+    }
 
     if (authError) {
       console.error('Auth signup error:', authError)
@@ -165,11 +191,31 @@ export async function POST(request: NextRequest) {
     // Handle school assignment/creation
     let schoolIdToUse = schoolId
 
-    // For admin role and new school registration, schoolId should be provided from school creation
+    // For admin role, create school from schoolName if not provided
     if (!schoolIdToUse && role === 'admin' && schoolName) {
-      return NextResponse.json({ 
-        error: 'School must be created first for admin registration' 
-      }, { status: 400 })
+      console.log('Creating school for admin:', schoolName)
+      
+      // Create new school for admin
+      const { data: newSchool, error: createError } = await serviceSupabase
+        .from('schools')
+        .insert({
+          name: schoolName.trim(),
+          address: 'To be updated',
+          email: `admin@${schoolName.toLowerCase().replace(/\s+/g, '')}.edu`,
+          phone: 'To be updated'
+        })
+        .select()
+        .single()
+
+      if (createError) {
+        console.error('Error creating school for admin:', createError)
+        return NextResponse.json({ 
+          error: 'Failed to create school. Please try again.' 
+        }, { status: 500 })
+      }
+
+      schoolIdToUse = newSchool.id
+      console.log('School created for admin:', schoolIdToUse)
     }
 
     // For teachers, try to find existing school by name or create a new one
@@ -255,9 +301,12 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create user profile
-    const profileData: any = {
-      id: authData.user.id,
+    // Use the service role client created earlier for profile operations
+
+    // Profile should be created automatically by trigger, so we just need to update it
+    console.log('Updating profile with school and additional data')
+    
+    const updateData: any = {
       school_id: schoolIdToUse,
       full_name: fullName,
       email: email,
@@ -266,60 +315,54 @@ export async function POST(request: NextRequest) {
 
     // For students and teachers signing up with invitation, mark school access as granted
     if ((role === 'student' || role === 'teacher') && invitationCode && invitation) {
-      profileData.school_access_granted = true
-      profileData.school_access_granted_at = new Date().toISOString()
-      profileData.invitation_id = invitation.id
+      updateData.school_access_granted = true
+      updateData.school_access_granted_at = new Date().toISOString()
+      updateData.invitation_id = invitation.id
     }
 
-    // Use service role client for profile operations to bypass RLS
-    const serviceSupabase = createServiceClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    )
-
-    // Try to insert the profile, but if it fails due to conflict (trigger created it), update it instead
-    const { data: profile, error: profileError } = await serviceSupabase
+    // Create or update the profile (handle case where trigger didn't create it)
+    let finalProfile, updateError
+    
+    // First try to update existing profile
+    const { data: updatedProfile, error: updateErr } = await serviceSupabase
       .from('profiles')
-      .insert(profileData)
+      .update(updateData)
+      .eq('id', authData.user.id)
       .select()
       .single()
 
-    let finalProfile = profile
-
-    if (profileError && profileError.code === '23505') {
-      // Profile already exists (created by trigger), update it with correct data
-      console.log('Profile exists, updating with correct data')
-      const { data: updatedProfile, error: updateError } = await serviceSupabase
+    if (updateErr && updateErr.code === 'PGRST116') {
+      // Profile doesn't exist, create it
+      console.log('Profile not found, creating new profile')
+      const { data: newProfile, error: createErr } = await serviceSupabase
         .from('profiles')
-        .update({
-          school_id: schoolIdToUse,
+        .insert({
+          id: authData.user.id,
+          email: authData.user.email,
           full_name: fullName,
           role: role,
-          email: email
+          school_id: schoolIdToUse,
+          ...updateData
         })
-        .eq('id', authData.user.id)
         .select()
         .single()
-
-      if (updateError) {
-        console.error('Profile update error:', updateError)
-        return NextResponse.json({ 
-          error: 'Failed to update user profile',
-          details: updateError.message
-        }, { status: 500 })
-      }
       
-      finalProfile = updatedProfile
-      console.log('Profile updated successfully:', finalProfile)
-    } else if (profileError) {
-      console.error('Profile creation error:', profileError)
-      return NextResponse.json({ 
-        error: 'Failed to create user profile',
-        details: profileError.message
-      }, { status: 500 })
+      finalProfile = newProfile
+      updateError = createErr
     } else {
-      console.log('Profile created successfully:', finalProfile)
+      finalProfile = updatedProfile
+      updateError = updateErr
     }
+
+    if (updateError) {
+      console.error('Profile creation/update error:', updateError)
+      return NextResponse.json({ 
+        error: 'Failed to create/update user profile',
+        details: updateError.message
+      }, { status: 500 })
+    }
+    
+    console.log('Profile updated successfully:', finalProfile)
 
     // If student or teacher signed up with invitation, update invitation status
     if ((role === 'student' || role === 'teacher') && invitationCode && invitation) {
@@ -346,13 +389,52 @@ export async function POST(request: NextRequest) {
       schoolId: finalProfile?.school_id
     })
 
+    const isInvitedUser = invitationCode && invitation
+    const isAutoConfirmed = role === 'admin' || isInvitedUser
+    
+    // For invited students, automatically sign them in
+    if (isInvitedUser && role === 'student') {
+      console.log('Auto-signing in invited student...')
+      
+      const { data: signInData, error: signInError } = await serviceSupabase.auth.signInWithPassword({
+        email,
+        password
+      })
+
+      if (signInError) {
+        console.error('Auto sign-in error:', signInError)
+        // Still return success, user can sign in manually
+        return NextResponse.json({ 
+          success: true, 
+          user: authData.user,
+          profile: finalProfile,
+          message: 'Student account created successfully. Please sign in to continue.',
+          requiresManualSignIn: true,
+          isAutoConfirmed: isAutoConfirmed
+        })
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        user: signInData.user,
+        profile: finalProfile,
+        session: signInData.session,
+        message: 'Student account created and signed in successfully',
+        redirectTo: '/dashboard',
+        isAutoConfirmed: isAutoConfirmed
+      })
+    }
+    
     return NextResponse.json({ 
       success: true, 
       user: authData.user,
       profile: finalProfile,
-      message: 'User created successfully',
-      emailConfirmationSent: !authData.user.email_confirmed_at,
-      requiresEmailConfirmation: !authData.user.email_confirmed_at
+      message: isAutoConfirmed 
+        ? `${role === 'admin' ? 'Admin' : 'Student'} account created successfully - ready to login!` 
+        : 'User created successfully - please check your email to confirm your account',
+      emailConfirmationSent: !isAutoConfirmed && !authData.user.email_confirmed_at,
+      requiresEmailConfirmation: !isAutoConfirmed && !authData.user.email_confirmed_at,
+      isAutoConfirmed: isAutoConfirmed
     })
   } catch (error) {
     console.error('Error in signup:', error)
