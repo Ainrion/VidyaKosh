@@ -78,10 +78,7 @@ Visit `http://localhost:3000`
 
 ```
 src/
-├── app/                    # Next.js app directory
-│   ├── dashboard/         # Dashboard page
-│   ├── courses/           # Course management
-│   ├── messages/          # Messaging system
+├── app/                    # Next.js app directory │   ├── dashboard/         # Dashboard page │   ├── courses/           # Course management │   ├── messages/          # Messaging system
 │   ├── login/             # Authentication
 │   └── signup/            # User registration
 ├── components/            # React components

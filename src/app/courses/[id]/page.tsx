@@ -1,6 +1,6 @@
 'use client'
 
-import { DashboardLayout } from '@/components/dashboard-layout'
+// DashboardLayout is now handled globally in AppLayout
 import { useAuth } from '@/hooks/useAuth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,12 +25,14 @@ import {
   FileText, 
   Plus,
   UserPlus,
-  Edit
+  Edit,
+  Paperclip
 } from 'lucide-react'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useRouter, useParams } from 'next/navigation'
+import { FileUpload } from '@/components/ui/file-upload'
 
 type Course = Database['public']['Tables']['courses']['Row'] & {
   created_by_profile?: {
@@ -63,6 +65,8 @@ export default function CourseDetailsPage() {
     due_date: '',
     points: ''
   })
+  const [assignmentFile, setAssignmentFile] = useState<File | null>(null)
+  const [isUploadingFile, setIsUploadingFile] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isUpdating, setIsUpdating] = useState(false)
   const [editCourse, setEditCourse] = useState({
@@ -146,43 +150,62 @@ export default function CourseDetailsPage() {
     }
   }, [courseId, profile?.role, profile?.id, supabase])
 
-  const enrollInCourse = async () => {
-    if (!profile || profile.role !== 'student') return
-
-    try {
-      const { error } = await supabase
-        .from('enrollments')
-        .insert({
-          course_id: courseId,
-          student_id: profile.id
-        })
-
-      if (error) throw error
-      
-      setIsEnrolled(true)
-      fetchEnrollments() // Refresh enrollments
-    } catch (error) {
-      console.error('Error enrolling in course:', error)
-    }
-  }
+  // Old enrollment functionality removed - students now use enrollment codes
 
   const createAssignment = async () => {
     if (!newAssignment.title.trim()) return
 
     setIsCreating(true)
     try {
-      const { error } = await supabase
-        .from('assignments')
-        .insert({
-          course_id: courseId,
-          title: newAssignment.title.trim(),
-          description: newAssignment.description.trim() || null,
-          due_date: newAssignment.due_date || null,
-          points: newAssignment.points ? parseInt(newAssignment.points) : null,
-          created_by: profile?.id
+      let fileData = null
+
+      // Upload file if one is selected
+      if (assignmentFile) {
+        setIsUploadingFile(true)
+        const formData = new FormData()
+        formData.append('file', assignmentFile)
+        formData.append('courseId', courseId)
+
+        const uploadResponse = await fetch('/api/assignments/upload-file', {
+          method: 'POST',
+          body: formData
         })
 
-      if (error) throw error
+        if (!uploadResponse.ok) {
+          const errorData = await uploadResponse.json()
+          throw new Error(errorData.error || 'Failed to upload file')
+        }
+
+        const uploadData = await uploadResponse.json()
+        fileData = uploadData.file
+        setIsUploadingFile(false)
+      }
+
+      // Create assignment with file data
+      const assignmentData = {
+        course_id: courseId,
+        title: newAssignment.title.trim(),
+        description: newAssignment.description.trim() || null,
+        due_date: newAssignment.due_date || null,
+        points: newAssignment.points ? parseInt(newAssignment.points) : null,
+        created_by: profile?.id
+      }
+
+      // Attachments are currently not supported in assignments table
+
+      console.log('Creating assignment with data:', assignmentData)
+
+      const { data: newAssignmentData, error } = await supabase
+        .from('assignments')
+        .insert(assignmentData)
+        .select()
+
+      if (error) {
+        console.error('Supabase error details:', error)
+        throw new Error(`Database error: ${error.message || 'Unknown error'}`)
+      }
+
+      console.log('Assignment created successfully:', newAssignmentData)
 
       // Reset form and close dialog
       setNewAssignment({
@@ -191,12 +214,23 @@ export default function CourseDetailsPage() {
         due_date: '',
         points: ''
       })
+      setAssignmentFile(null)
       setIsCreateDialogOpen(false)
       
       // Refresh assignments
       fetchAssignments()
     } catch (error) {
       console.error('Error creating assignment:', error)
+      console.error('Error details:', {
+        message: (error as any)?.message,
+        stack: (error as any)?.stack,
+        name: (error as any)?.name,
+        cause: (error as any)?.cause
+      })
+      
+      // Show user-friendly error message
+      alert(`Failed to create assignment: ${(error as any)?.message || 'Unknown error occurred'}`)
+      setIsUploadingFile(false)
     } finally {
       setIsCreating(false)
     }
@@ -257,22 +291,18 @@ export default function CourseDetailsPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
+      <div className="p-6">
           <div className="animate-pulse space-y-4">
             <div className="h-8 bg-gray-200 rounded w-1/3"></div>
             <div className="h-4 bg-gray-200 rounded w-2/3"></div>
             <div className="h-32 bg-gray-200 rounded"></div>
           </div>
-        </div>
-      </DashboardLayout>
-    )
+        </div>    )
   }
 
   if (!course) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
+      <div className="p-6">
           <div className="text-center">
             <h1 className="text-2xl font-bold text-gray-900 mb-4">Course not found</h1>
             <Button onClick={() => router.push('/courses')}>
@@ -280,14 +310,11 @@ export default function CourseDetailsPage() {
               Back to Courses
             </Button>
           </div>
-        </div>
-      </DashboardLayout>
-    )
+        </div>    )
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
+    <div className="p-6">
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <Button
@@ -354,9 +381,9 @@ export default function CourseDetailsPage() {
             </Dialog>
           )}
           {profile?.role === 'student' && !isEnrolled && (
-            <Button onClick={enrollInCourse}>
+            <Button onClick={() => window.location.href = '/enroll'}>
               <UserPlus className="h-4 w-4 mr-2" />
-              Enroll
+              Join with Code
             </Button>
           )}
         </div>
@@ -475,6 +502,17 @@ export default function CourseDetailsPage() {
                           />
                         </div>
                       </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="attachment">Assignment File (Optional)</Label>
+                        <FileUpload
+                          onFileSelect={(file) => setAssignmentFile(file)}
+                          onFileRemove={() => setAssignmentFile(null)}
+                          acceptedTypes={['.pdf', '.doc', '.docx', '.txt', '.xls', '.xlsx', '.jpg', '.jpeg', '.png', '.gif']}
+                          maxSizeMB={25}
+                          disabled={isCreating || isUploadingFile}
+                          placeholder="Upload assignment file (PDF, Word, Excel, Images)"
+                        />
+                      </div>
                     </div>
                     <DialogFooter>
                       <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
@@ -482,9 +520,9 @@ export default function CourseDetailsPage() {
                       </Button>
                       <Button 
                         onClick={createAssignment} 
-                        disabled={!newAssignment.title.trim() || isCreating}
+                        disabled={!newAssignment.title.trim() || isCreating || isUploadingFile}
                       >
-                        {isCreating ? 'Creating...' : 'Create Assignment'}
+                        {isUploadingFile ? 'Uploading File...' : isCreating ? 'Creating...' : 'Create Assignment'}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -529,7 +567,12 @@ export default function CourseDetailsPage() {
                       <p className="text-gray-700 mb-4">
                         {assignment.description || 'No description provided.'}
                       </p>
-                      <Button variant="outline" size="sm">
+                      {/* Attachments are currently not supported in assignments table */}
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => router.push(`/assignments/${assignment.id}`)}
+                      >
                         View Assignment
                       </Button>
                     </CardContent>
@@ -618,7 +661,5 @@ export default function CourseDetailsPage() {
             </TabsContent>
           )}
         </Tabs>
-      </div>
-    </DashboardLayout>
-  )
+      </div>  )
 }

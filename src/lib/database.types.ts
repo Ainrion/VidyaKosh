@@ -38,6 +38,8 @@ export interface Database {
           email: string
           role: 'admin' | 'teacher' | 'student'
           avatar_url: string | null
+          phone: string | null
+          bio: string | null
           is_active: boolean
           created_at: string
         }
@@ -48,6 +50,8 @@ export interface Database {
           email: string
           role: 'admin' | 'teacher' | 'student'
           avatar_url?: string | null
+          phone?: string | null
+          bio?: string | null
           is_active?: boolean
           created_at?: string
         }
@@ -58,6 +62,8 @@ export interface Database {
           email?: string
           role?: 'admin' | 'teacher' | 'student'
           avatar_url?: string | null
+          phone?: string | null
+          bio?: string | null
           is_active?: boolean
           created_at?: string
         }

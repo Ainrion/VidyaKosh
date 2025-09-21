@@ -1,410 +1,457 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
-import { useAuth } from '@/hooks/useAuth'
-import { DashboardLayout } from '@/components/dashboard-layout'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Plus, Building2, Users, Edit, Trash2 } from 'lucide-react'
-import { toast } from 'sonner'
+import { useRouter } from 'next/navigation'
+import { 
+  Search, 
+  MapPin, 
+  Mail, 
+  Phone, 
+  Users, 
+  BookOpen,
+  ArrowRight,
+  Building2,
+  Send,
+  CheckCircle
+} from 'lucide-react'
+import Image from 'next/image'
+import { motion, AnimatePresence } from 'framer-motion'
+import Link from 'next/link'
 
 interface School {
   id: string
   name: string
-  address: string | null
-  phone: string | null
-  email: string | null
-  logo_url: string | null
+  address: string
+  email: string
+  phone: string
+  logo_url?: string
   created_at: string
   _count?: {
+    courses: number
     profiles: number
   }
 }
 
+interface ApplicationFormData {
+  teacherName: string
+  teacherEmail: string
+  message: string
+}
+
 export default function SchoolsPage() {
-  const { profile } = useAuth()
   const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null)
-  const [formData, setFormData] = useState({
-    name: '',
-    address: '',
-    phone: '',
-    email: '',
-    logo_url: ''
+  const [applicationForm, setApplicationForm] = useState<ApplicationFormData>({
+    teacherName: '',
+    teacherEmail: '',
+    message: ''
   })
+  const [submittingApplication, setSubmittingApplication] = useState(false)
+  const [applicationSubmitted, setApplicationSubmitted] = useState(false)
+  const [applicationError, setApplicationError] = useState('')
+  
+  const router = useRouter()
 
-  const fetchSchools = useCallback(async () => {
+  useEffect(() => {
+    fetchSchools()
+  }, [])
+
+  const fetchSchools = async () => {
     try {
-      setLoading(true)
       const response = await fetch('/api/schools')
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch schools')
+      if (response.ok) {
+        const data = await response.json()
+        setSchools(data.schools || [])
+      } else {
+        console.error('Failed to fetch schools')
       }
-      
-      const data = await response.json()
-      setSchools(data.schools || [])
     } catch (error) {
       console.error('Error fetching schools:', error)
-      toast.error('Failed to fetch schools')
     } finally {
       setLoading(false)
     }
-  }, [])
-
-  useEffect(() => {
-    if (profile?.role === 'admin') {
-      fetchSchools()
-    }
-  }, [profile?.role, fetchSchools])
-
-  const handleCreateSchool = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    try {
-      const response = await fetch('/api/schools', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create school')
-      }
-
-      const data = await response.json()
-      setSchools(prev => [data.school, ...prev])
-      setShowCreateDialog(false)
-      setFormData({ name: '', address: '', phone: '', email: '', logo_url: '' })
-      toast.success('School created successfully')
-    } catch (error) {
-      console.error('Error creating school:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to create school')
-    }
   }
 
-  const handleEditSchool = async (e: React.FormEvent) => {
+  const handleApplicationSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedSchool) return
 
-    try {
-      const response = await fetch(`/api/schools/${selectedSchool.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
+    setSubmittingApplication(true)
+    setApplicationError('')
 
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to update school')
-      }
+    try {
+      const response = await fetch('/api/teachers/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teacherName: applicationForm.teacherName,
+          teacherEmail: applicationForm.teacherEmail,
+          schoolId: selectedSchool.id,
+          message: applicationForm.message
+        }),
+      })
 
       const data = await response.json()
-      setSchools(prev => prev.map(school => 
-        school.id === selectedSchool.id ? data.school : school
-      ))
-      setShowEditDialog(false)
-      setSelectedSchool(null)
-      setFormData({ name: '', address: '', phone: '', email: '', logo_url: '' })
-      toast.success('School updated successfully')
-    } catch (error) {
-      console.error('Error updating school:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to update school')
-    }
-  }
-
-  const handleDeleteSchool = async (schoolId: string) => {
-    if (!confirm('Are you sure you want to delete this school? This action cannot be undone.')) {
-      return
-    }
-
-    try {
-      const response = await fetch(`/api/schools/${schoolId}`, {
-        method: 'DELETE'
-      })
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to delete school')
+        throw new Error(data.error || 'Failed to submit application')
       }
 
-      setSchools(prev => prev.filter(school => school.id !== schoolId))
-      toast.success('School deleted successfully')
-    } catch (error) {
-      console.error('Error deleting school:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to delete school')
+      setApplicationSubmitted(true)
+      setApplicationForm({
+        teacherName: '',
+        teacherEmail: '',
+        message: ''
+      })
+    } catch (error: any) {
+      console.error('Application submission error:', error)
+      setApplicationError(error.message || 'Failed to submit application. Please try again.')
+    } finally {
+      setSubmittingApplication(false)
     }
   }
 
-  const openEditDialog = (school: School) => {
-    setSelectedSchool(school)
-    setFormData({
-      name: school.name,
-      address: school.address || '',
-      phone: school.phone || '',
-      email: school.email || '',
-      logo_url: school.logo_url || ''
-    })
-    setShowEditDialog(true)
-  }
+  const filteredSchools = schools.filter(school =>
+    school.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    school.address.toLowerCase().includes(searchTerm.toLowerCase())
+  )
 
-  if (profile?.role !== 'admin') {
+  if (loading) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
-          <div className="text-center">
-            <Building2 className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
-            <p className="text-gray-600">
-              You need administrator privileges to access school management.
-            </p>
-          </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading schools...</p>
         </div>
-      </DashboardLayout>
+      </div>
     )
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">School Management</h1>
-            <p className="text-gray-600">Manage all schools in the system</p>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center">
+              <div className="h-8 w-8 mr-3">
+                <Image 
+                  src="/r-logo.svg" 
+                  alt="Riven Logo" 
+                  width={32} 
+                  height={32}
+                  className="h-8 w-8"
+                />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">Riven</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link href="/login" className="text-gray-600 hover:text-gray-900">
+                Sign In
+              </Link>
+              <Link href="/teachers" className="text-gray-600 hover:text-gray-900">
+                Back to Teachers
+              </Link>
+            </div>
           </div>
-          
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Create School
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New School</DialogTitle>
-                <DialogDescription>
-                  Add a new school to the system
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateSchool} className="space-y-4">
-                <div>
-                  <Label htmlFor="name">School Name *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    placeholder="Enter school name"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="address">Address</Label>
-                  <Textarea
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                    placeholder="Enter school address"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="phone">Phone</Label>
-                    <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                      placeholder="Enter phone number"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="Enter email address"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="logo_url">Logo URL</Label>
-                  <Input
-                    id="logo_url"
-                    value={formData.logo_url}
-                    onChange={(e) => setFormData(prev => ({ ...prev, logo_url: e.target.value }))}
-                    placeholder="Enter logo URL"
-                  />
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">Create School</Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Page Header */}
+        <div className="text-center mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              Find Your School
+            </h1>
+            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+              Browse schools that are looking for teachers and apply to join their team.
+            </p>
+          </motion.div>
         </div>
 
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-gray-600">Loading schools...</p>
-          </div>
-        ) : schools.length === 0 ? (
+        {/* Search Bar */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="mb-8"
+        >
           <Card>
-            <CardContent className="text-center py-8">
-              <Building2 className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Schools Found</h3>
-              <p className="text-gray-600 mb-4">Get started by creating your first school.</p>
-              <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create First School
-              </Button>
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <Search className="h-5 w-5 text-gray-400" />
+                <Input
+                  placeholder="Search schools by name or location..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="flex-1"
+                />
+              </div>
             </CardContent>
           </Card>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {schools.map((school) => (
-              <Card key={school.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <Building2 className="h-5 w-5" />
-                        {school.name}
-                      </CardTitle>
-                      <CardDescription>
-                        Created {new Date(school.created_at).toLocaleDateString()}
-                      </CardDescription>
+        </motion.div>
+
+        {/* Schools Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <AnimatePresence>
+            {filteredSchools.map((school, index) => (
+              <motion.div
+                key={school.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+              >
+                <Card className="h-full hover:shadow-lg transition-shadow duration-300">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center">
+                        {school.logo_url ? (
+                          <img 
+                            src={school.logo_url} 
+                            alt={school.name}
+                            className="w-12 h-12 rounded-lg object-cover mr-3"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mr-3">
+                            <Building2 className="h-6 w-6 text-blue-600" />
+                          </div>
+                        )}
+                        <div>
+                          <CardTitle className="text-lg">{school.name}</CardTitle>
+                          <CardDescription className="flex items-center mt-1">
+                            <MapPin className="h-4 w-4 mr-1" />
+                            {school.address}
+                          </CardDescription>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => openEditDialog(school)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteSchool(school.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Mail className="h-4 w-4 mr-2" />
+                        {school.email}
+                      </div>
+                      {school.phone && (
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Phone className="h-4 w-4 mr-2" />
+                          {school.phone}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {school.address && (
-                      <p className="text-sm text-gray-600">
-                        📍 {school.address}
-                      </p>
-                    )}
-                    {school.phone && (
-                      <p className="text-sm text-gray-600">
-                        📞 {school.phone}
-                      </p>
-                    )}
-                    {school.email && (
-                      <p className="text-sm text-gray-600">
-                        ✉️ {school.email}
-                      </p>
-                    )}
-                    <div className="flex items-center gap-2 mt-3">
-                      <Users className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm text-gray-600">
-                        {school._count?.profiles || 0} users
-                      </span>
+
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center">
+                        <Users className="h-4 w-4 mr-1 text-gray-400" />
+                        <span className="text-gray-600">
+                          {school._count?.profiles || 0} members
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        <BookOpen className="h-4 w-4 mr-1 text-gray-400" />
+                        <span className="text-gray-600">
+                          {school._count?.courses || 0} courses
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
+
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                          onClick={() => setSelectedSchool(school)}
+                        >
+                          Apply to Join
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>Apply to {school.name}</DialogTitle>
+                          <DialogDescription>
+                            Send an application to join this school as a teacher.
+                          </DialogDescription>
+                        </DialogHeader>
+                        
+                        {applicationSubmitted ? (
+                          <div className="text-center py-8">
+                            <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                              Application Submitted!
+                            </h3>
+                            <p className="text-gray-600 mb-4">
+                              Your application has been sent to {school.name}. 
+                              They will review it and get back to you soon.
+                            </p>
+                            <Button 
+                              onClick={() => {
+                                setApplicationSubmitted(false)
+                                setSelectedSchool(null)
+                              }}
+                              variant="outline"
+                            >
+                              Close
+                            </Button>
+                          </div>
+                        ) : (
+                          <form onSubmit={handleApplicationSubmit} className="space-y-4">
+                            <div>
+                              <Label htmlFor="teacherName">Your Name</Label>
+                              <Input
+                                id="teacherName"
+                                value={applicationForm.teacherName}
+                                onChange={(e) => setApplicationForm(prev => ({ 
+                                  ...prev, 
+                                  teacherName: e.target.value 
+                                }))}
+                                placeholder="Enter your full name"
+                                required
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor="teacherEmail">Email Address</Label>
+                              <Input
+                                id="teacherEmail"
+                                type="email"
+                                value={applicationForm.teacherEmail}
+                                onChange={(e) => setApplicationForm(prev => ({ 
+                                  ...prev, 
+                                  teacherEmail: e.target.value 
+                                }))}
+                                placeholder="Enter your email"
+                                required
+                              />
+                            </div>
+
+                            <div>
+                              <Label htmlFor="message">Message (Optional)</Label>
+                              <Textarea
+                                id="message"
+                                value={applicationForm.message}
+                                onChange={(e) => setApplicationForm(prev => ({ 
+                                  ...prev, 
+                                  message: e.target.value 
+                                }))}
+                                placeholder="Tell them why you'd like to join their school..."
+                                rows={3}
+                              />
+                            </div>
+
+                            {applicationError && (
+                              <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                                <p className="text-sm text-red-600">{applicationError}</p>
+                              </div>
+                            )}
+
+                            <div className="flex gap-3">
+                              <Button 
+                                type="submit" 
+                                disabled={submittingApplication}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                              >
+                                {submittingApplication ? (
+                                  <>
+                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                    Submitting...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Send className="mr-2 h-4 w-4" />
+                                    Submit Application
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </form>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
-          </div>
+          </AnimatePresence>
+        </div>
+
+        {/* Empty State */}
+        {filteredSchools.length === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="text-center py-12"
+          >
+            <Building2 className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              {searchTerm ? 'No schools found' : 'No schools available'}
+            </h3>
+            <p className="text-gray-600 mb-4">
+              {searchTerm 
+                ? `No schools match your search for "${searchTerm}".`
+                : 'There are currently no schools accepting teacher applications.'
+              }
+            </p>
+            {searchTerm && (
+              <Button 
+                onClick={() => setSearchTerm('')}
+                variant="outline"
+              >
+                Clear Search
+              </Button>
+            )}
+          </motion.div>
         )}
 
-        {/* Edit Dialog */}
-        <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Edit School</DialogTitle>
-              <DialogDescription>
-                Update school information
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleEditSchool} className="space-y-4">
-              <div>
-                <Label htmlFor="edit-name">School Name *</Label>
-                <Input
-                  id="edit-name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="Enter school name"
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="edit-address">Address</Label>
-                <Textarea
-                  id="edit-address"
-                  value={formData.address}
-                  onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="Enter school address"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="edit-phone">Phone</Label>
-                  <Input
-                    id="edit-phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                    placeholder="Enter phone number"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="edit-email">Email</Label>
-                  <Input
-                    id="edit-email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    placeholder="Enter email address"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="edit-logo_url">Logo URL</Label>
-                <Input
-                  id="edit-logo_url"
-                  value={formData.logo_url}
-                  onChange={(e) => setFormData(prev => ({ ...prev, logo_url: e.target.value }))}
-                  placeholder="Enter logo URL"
-                />
-              </div>
-              <div className="flex justify-end space-x-2">
-                <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">Update School</Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        {/* Call to Action */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.4 }}
+          className="mt-16 text-center bg-white rounded-2xl shadow-lg p-8"
+        >
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Don't See Your School?
+          </h2>
+          <p className="text-gray-600 mb-6">
+            If you don't see your school listed, you can still apply to join as a teacher.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button 
+              onClick={() => router.push('/teachers')}
+              variant="outline"
+              className="border-blue-600 text-blue-600 hover:bg-blue-50"
+            >
+              <ArrowRight className="mr-2 h-4 w-4" />
+              Back to Teacher Options
+            </Button>
+            <Button 
+              onClick={() => router.push('/signup?role=admin')}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Building2 className="mr-2 h-4 w-4" />
+              Create New School
+            </Button>
+          </div>
+        </motion.div>
       </div>
-    </DashboardLayout>
+    </div>
   )
 }

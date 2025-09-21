@@ -41,7 +41,8 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/signup') &&
     !request.nextUrl.pathname.startsWith('/auth') &&
-    !request.nextUrl.pathname.startsWith('/setup')
+    !request.nextUrl.pathname.startsWith('/setup') &&
+    !request.nextUrl.pathname.startsWith('/join')
   ) {
     // no user, potentially respond by redirecting the user to the login page
     const url = request.nextUrl.clone()
@@ -50,7 +51,7 @@ export async function updateSession(request: NextRequest) {
   }
 
   // If user is authenticated, check if they have a profile
-  if (user && !request.nextUrl.pathname.startsWith('/setup') && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/signup')) {
+  if (user && !request.nextUrl.pathname.startsWith('/setup') && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/signup') && !request.nextUrl.pathname.startsWith('/join')) {
     try {
       const { data: profile, error } = await supabase
         .from('profiles')

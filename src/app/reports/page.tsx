@@ -1,6 +1,6 @@
 'use client'
 
-import { DashboardLayout } from '@/components/dashboard-layout'
+// DashboardLayout is now handled globally in AppLayout
 import { useAuth } from '@/hooks/useAuth'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -8,13 +8,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { 
   Users, 
-  GraduationCap, 
   BookOpen, 
   TrendingUp, 
   BarChart3, 
   FileText, 
   Download 
 } from 'lucide-react'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 
 interface ReportData {
@@ -137,8 +137,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
+    <div className="p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-3xl font-bold">Reports & Analytics</h1>
@@ -170,7 +169,15 @@ export default function ReportsPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Teachers</CardTitle>
-              <GraduationCap className="h-4 w-4 text-green-600" />
+              <div className="h-4 w-4">
+                <Image 
+                  src="/r-logo.svg" 
+                  alt="Riven Logo" 
+                  width={16} 
+                  height={16}
+                  className="h-4 w-4"
+                />
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{reportData?.totalTeachers || 0}</div>
@@ -350,7 +357,5 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
         </div>
-      </div>
-    </DashboardLayout>
-  )
+      </div>  )
 }

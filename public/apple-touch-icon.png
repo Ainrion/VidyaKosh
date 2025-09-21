@@ -1,0 +1,13 @@
+<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="rGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4F9EFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563EB;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- R Logo - Exact match scaled up for Apple touch icon -->
+  <!-- Main R shape with thick rounded lines -->
+  <path d="M45 22h56c20 0 36 17 36 36v0c0 14-8 25-20 31l28 45h-22l-25-42h-11v42h-22V22zm22 22v39h34c8 0 14-6 14-14v0c0-8-6-14-14-14h-34z" 
+        fill="url(#rGradient)"/>
+</svg>

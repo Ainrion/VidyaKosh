@@ -2,6 +2,111 @@
 @import "tw-animate-css";
 @import "react-big-calendar/lib/css/react-big-calendar.css";
 
+/* Custom Scrollbar Styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 100px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: rgb(209 213 219);
+  border-radius: 100px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgb(156 163 175);
+  background-clip: content-box;
+}
+
+.scrollbar-thin::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Enhanced UI Spacing and Typography */
+.page-container {
+  @apply space-y-8 max-w-7xl mx-auto;
+}
+
+.page-header {
+  @apply space-y-4;
+}
+
+.page-title {
+  @apply text-3xl font-bold text-gray-900 tracking-tight;
+}
+
+.page-subtitle {
+  @apply text-gray-600 text-lg leading-relaxed;
+}
+
+.section-spacing {
+  @apply space-y-6;
+}
+
+.card-grid {
+  @apply grid gap-6;
+}
+
+.card-grid-responsive {
+  @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6;
+}
+
+.content-spacing {
+  @apply space-y-4;
+}
+
+.form-spacing {
+  @apply space-y-4;
+}
+
+.button-group {
+  @apply flex flex-wrap gap-3;
+}
+
+/* Improved Card Styles */
+.enhanced-card {
+  @apply bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200;
+}
+
+.enhanced-card-header {
+  @apply p-6 pb-4 border-b border-gray-100;
+}
+
+.enhanced-card-content {
+  @apply p-6 pt-4;
+}
+
+/* Better Focus States */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white;
+}
+
+/* Improved Animations */
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.slide-up {
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -92,6 +197,27 @@ body {
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
     line-clamp: 2;
+  }
+  
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+  }
+  
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  
+  .animate-shimmer {
+    animation: shimmer 2s ease-in-out infinite;
   }
 }
 

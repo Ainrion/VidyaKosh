@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Teacher Invitation Preview - Riven</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+      position: relative;
+      overflow: hidden;
+    }
+    .container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #10b981, #059669, #047857);
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: 800;
+      color: #1f2937;
+      margin-bottom: 16px;
+    }
+    .logo-emoji {
+      font-size: 32px;
+      margin-right: 8px;
+    }
+    .title {
+      font-size: 28px;
+      font-weight: 700;
+      color: #1f2937;
+      margin: 0;
+      background: linear-gradient(135deg, #10b981, #059669);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .content {
+      margin-bottom: 32px;
+    }
+    .greeting {
+      font-size: 18px;
+      color: #374151;
+      margin-bottom: 20px;
+    }
+    .invitation-box {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      border: none;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: center;
+      margin: 24px 0;
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+    }
+    .cta-button {
+      display: inline-block;
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      text-decoration: none;
+      padding: 16px 32px;
+      border-radius: 12px;
+      font-weight: 600;
+      font-size: 16px;
+      box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+      transition: all 0.3s ease;
+    }
+    .cta-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 35px rgba(16, 185, 129, 0.4);
+    }
+    .expiry {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 24px 0;
+      font-size: 14px;
+      color: #92400e;
+    }
+    .steps {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 24px 0;
+    }
+    .steps h3 {
+      margin-top: 0;
+      color: #1f2937;
+      font-size: 18px;
+    }
+    .steps ol {
+      margin: 0;
+      padding-left: 20px;
+    }
+    .steps li {
+      margin-bottom: 8px;
+      color: #374151;
+    }
+    .footer {
+      border-top: 1px solid #e5e7eb;
+      padding-top: 24px;
+      text-align: center;
+      color: #6b7280;
+      font-size: 14px;
+    }
+    .brand-footer {
+      text-align: center;
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .brand-name {
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 4px;
+    }
+    .brand-tagline {
+      color: #6b7280;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <span class="logo-emoji">⚡</span>Riven
+      </div>
+      <h1 class="title">You're Invited to Join Rivendell High School as a Teacher!</h1>
+    </div>
+    
+    <div class="content">
+      <p class="greeting">Hello John Smith,</p>
+      
+      <p><strong>Dr. Sarah Johnson</strong> has invited you to join <strong>Rivendell High School</strong> on Riven, the modern learning platform that connects students, teachers, and administrators.</p>
+      
+      <div style="background: #f0f9ff; border-left: 4px solid #0ea5e9; padding: 16px; margin: 20px 0; border-radius: 8px;"><em>"Welcome to our teaching team! We're excited to have you join us as a mathematics teacher."</em></div>
+      
+      <div class="invitation-box">
+        <p style="font-weight: 600; margin-bottom: 16px; color: white;">🎓 Teacher Quick Access</p>
+        <p style="color: white; font-size: 16px; margin: 0;">No code needed! Click the button below for instant access.</p>
+      </div>
+      
+      <div style="text-align: center;">
+        <a href="http://localhost:3000/join/teacher?token=abc123def456" class="cta-button">
+          🎓 Join as Teacher - Quick Access
+        </a>
+      </div>
+      
+      <div class="expiry">
+        <strong>Important:</strong> This invitation expires on December 19, 2024 at 12:45 AM
+      </div>
+      
+      <div class="steps">
+        <h3>What's Next?</h3>
+        <ol>
+          <li>Click the "Join as Teacher" button above</li>
+          <li>Complete your teacher profile setup</li>
+          <li>Access your teacher dashboard and tools</li>
+          <li>Start creating courses and managing your classes</li>
+        </ol>
+      </div>
+      
+      <p style="color: #6b7280; font-size: 14px;">If you have any questions, please contact your school administrator or reply to this email.</p>
+    </div>
+    
+    <div class="footer">
+      <p>This invitation was sent by Dr. Sarah Johnson from Rivendell High School.</p>
+      <p>If you didn't expect this invitation, you can safely ignore this email.</p>
+    </div>
+    
+    <div class="brand-footer">
+      <div class="brand-name">⚡ Riven</div>
+      <div class="brand-tagline">Modern Learning Management System</div>
+    </div>
+  </div>
+</body>
+</html>

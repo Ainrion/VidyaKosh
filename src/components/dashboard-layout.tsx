@@ -22,10 +22,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30">
       <Navigation />
-      <main className="flex-1 overflow-auto">
-        {children}
+      <main className="flex-1 overflow-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+        <div className="min-h-full">
+          {children}
+        </div>
       </main>
     </div>
   )

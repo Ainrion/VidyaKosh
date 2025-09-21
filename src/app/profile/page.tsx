@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
-import { DashboardLayout } from '@/components/dashboard-layout'
+// DashboardLayout is now handled globally in AppLayout
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -30,8 +30,8 @@ export default function ProfilePage() {
       setFormData({
         full_name: profile.full_name || '',
         email: profile.email || '',
-        phone: (profile as any).phone || '',
-        bio: (profile as any).bio || ''
+        phone: profile.phone || '',
+        bio: profile.bio || ''
       })
       fetchSchoolName()
     }
@@ -70,22 +70,47 @@ export default function ProfilePage() {
 
     setLoading(true)
     try {
+      // Build update object with only the fields that exist
+      const updateData: any = {
+        full_name: formData.full_name.trim()
+      }
+
+      // Only include phone and bio if they exist in the database
+      // We'll check by trying to update them and handling the error gracefully
+      if (formData.phone.trim()) {
+        updateData.phone = formData.phone.trim()
+      }
+      if (formData.bio.trim()) {
+        updateData.bio = formData.bio.trim()
+      }
+
       const { error } = await supabase
         .from('profiles')
-        .update({
-          full_name: formData.full_name.trim(),
-          phone: formData.phone.trim() || null,
-          bio: formData.bio.trim() || null
-        })
+        .update(updateData)
         .eq('id', profile.id)
 
-      if (error) throw error
+      if (error) {
+        console.error('Profile update error:', error)
+        // If it's a column doesn't exist error, try updating only full_name
+        if (error.message?.includes('column') && error.message?.includes('does not exist')) {
+          console.log('Phone/bio columns don\'t exist, updating only full_name')
+          const { error: nameError } = await supabase
+            .from('profiles')
+            .update({ full_name: formData.full_name.trim() })
+            .eq('id', profile.id)
+          
+          if (nameError) throw nameError
+        } else {
+          throw error
+        }
+      }
 
       await refreshProfile()
       setIsEditing(false)
     } catch (error) {
       console.error('Error updating profile:', error)
-      alert('Error updating profile. Please try again.')
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      alert(`Error updating profile: ${errorMessage}`)
     } finally {
       setLoading(false)
     }
@@ -96,8 +121,8 @@ export default function ProfilePage() {
       setFormData({
         full_name: profile.full_name || '',
         email: profile.email || '',
-        phone: (profile as any).phone || '',
-        bio: (profile as any).bio || ''
+        phone: profile.phone || '',
+        bio: profile.bio || ''
       })
     }
     setIsEditing(false)
@@ -105,20 +130,17 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-gray-600">Loading profile...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-gray-600">Loading profile...</p>
         </div>
-      </DashboardLayout>
+      </div>
     )
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-6 max-w-4xl mx-auto">
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
           <p className="text-gray-600 mt-1">Manage your personal information and settings</p>
@@ -265,7 +287,7 @@ export default function ProfilePage() {
                       <Phone className="h-4 w-4 text-gray-500" />
                       <div>
                         <p className="font-medium">Phone</p>
-                        <p className="text-gray-600">{(profile as any).phone || 'Not provided'}</p>
+                        <p className="text-gray-600">{profile.phone || 'Not provided'}</p>
                       </div>
                     </div>
                     
@@ -273,7 +295,7 @@ export default function ProfilePage() {
                       <User className="h-4 w-4 text-gray-500 mt-1" />
                       <div>
                         <p className="font-medium">Bio</p>
-                        <p className="text-gray-600">{(profile as any).bio || 'No bio provided'}</p>
+                        <p className="text-gray-600">{profile.bio || 'No bio provided'}</p>
                       </div>
                     </div>
                   </div>
@@ -339,8 +361,8 @@ export default function ProfilePage() {
                     <span className="text-sm font-medium">
                       {Math.round(((profile.full_name ? 1 : 0) + 
                                    (profile.email ? 1 : 0) + 
-                                   ((profile as any).phone ? 1 : 0) + 
-                                   ((profile as any).bio ? 1 : 0)) / 4 * 100)}%
+                                   (profile.phone ? 1 : 0) + 
+                                   (profile.bio ? 1 : 0)) / 4 * 100)}%
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -349,13 +371,13 @@ export default function ProfilePage() {
                       style={{ 
                         width: `${Math.round(((profile.full_name ? 1 : 0) + 
                                              (profile.email ? 1 : 0) + 
-                                             ((profile as any).phone ? 1 : 0) + 
-                                             ((profile as any).bio ? 1 : 0)) / 4 * 100)}%` 
+                                             (profile.phone ? 1 : 0) + 
+                                             (profile.bio ? 1 : 0)) / 4 * 100)}%` 
                       }}
                     ></div>
                   </div>
                   <p className="text-xs text-gray-500">
-                    Complete your profile to get the most out of Vidyakosh
+                    Complete your profile to get the most out of Riven
                   </p>
                 </div>
               </CardContent>
@@ -363,6 +385,5 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
   )
 }
