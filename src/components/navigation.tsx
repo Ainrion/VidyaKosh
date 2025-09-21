@@ -82,13 +82,13 @@ export function Navigation() {
     return (
       <nav className="flex h-screen flex-col bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700 shadow-2xl w-16">
         <div className="flex h-20 items-center justify-center border-b border-slate-700">
-          <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
+          <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center shadow-md">
             <Image 
-              src="/r-logo.svg" 
+              src="/logo.png" 
               alt="Riven Logo" 
-              width={40} 
-              height={40}
-              className="h-10 w-10"
+              width={20} 
+              height={20}
+              className="h-5 w-5"
             />
           </div>
         </div>
@@ -120,13 +120,13 @@ export function Navigation() {
       )}>
         {!isCollapsed && (
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
+            <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center shadow-md">
               <Image 
-                src="/r-logo.svg" 
+                src="/logo.png" 
                 alt="Riven Logo" 
-                width={40} 
-                height={40}
-                className="h-10 w-10"
+                width={20} 
+                height={20}
+                className="h-5 w-5"
               />
             </div>
             <div>
@@ -138,13 +138,13 @@ export function Navigation() {
         
         {isCollapsed && (
           <div className="flex flex-col items-center gap-2">
-            <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
+            <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center shadow-md">
               <Image 
-                src="/r-logo.svg" 
+                src="/logo.png" 
                 alt="Riven Logo" 
-                width={40} 
-                height={40}
-                className="h-10 w-10"
+                width={20} 
+                height={20}
+                className="h-5 w-5"
               />
             </div>
             <Button

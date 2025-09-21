@@ -146,10 +146,10 @@ export default function SignupPage() {
             <div className="flex items-center">
               <div className="h-8 w-8 mr-3">
                 <Image 
-                  src="/r-logo.svg" 
+                  src="/logo.png" 
                   alt="Riven Logo" 
-                  width={32} 
-                  height={32}
+                  width={24} 
+                  height={24}
                   className="h-8 w-8"
                 />
               </div>
@@ -393,10 +393,10 @@ export default function SignupPage() {
             <div className="flex items-center justify-center mb-4">
               <div className="h-8 w-8 mr-3">
                 <Image 
-                  src="/r-logo.svg" 
+                  src="/logo.png" 
                   alt="Riven Logo" 
-                  width={32} 
-                  height={32}
+                  width={24} 
+                  height={24}
                   className="h-8 w-8"
                 />
               </div>

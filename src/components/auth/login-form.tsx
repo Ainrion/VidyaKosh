@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -126,16 +127,29 @@ export function LoginForm({ onSwitchToSignup, onSwitchToForgotPassword }: LoginF
       </form>
 
 
-      {/* Sign Up Link */}
-      <div className="text-center text-sm text-gray-600">
-        Don't have an account?{' '}
-        <Button
-          variant="link"
-          className="px-0 text-sm text-purple-600 hover:text-purple-700"
-          onClick={onSwitchToSignup}
-        >
-          Sign up
-        </Button>
+      {/* Sign Up Section */}
+      <div className="text-center space-y-4">
+        <p className="text-sm text-gray-600">
+          Don't have an account?
+        </p>
+        <div className="flex flex-col gap-3">
+          <Link href="/teachers">
+            <Button 
+              variant="outline" 
+              className="w-full h-11 !border-blue-500 !text-blue-600 hover:!bg-blue-50 hover:!border-blue-600"
+            >
+              Sign up as Teacher
+            </Button>
+          </Link>
+          <Link href="/students">
+            <Button 
+              variant="outline" 
+              className="w-full h-11 !border-green-500 !text-green-600 hover:!bg-green-50 hover:!border-green-600"
+            >
+              Sign up as Student
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   )

@@ -179,21 +179,21 @@ export default function StudentsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b !border-green-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
-            <div className="flex items-center">
+            <Link href="/" className="flex items-center hover:opacity-80 transition-opacity duration-200">
               <div className="h-8 w-8 mr-3">
                 <Image 
-                  src="/r-logo.svg" 
+                  src="/logo.png" 
                   alt="Riven Logo" 
-                  width={32} 
-                  height={32}
+                  width={24} 
+                  height={24}
                   className="h-8 w-8"
                 />
               </div>
               <h1 className="text-2xl font-bold text-gray-900">Riven</h1>
-            </div>
+            </Link>
             <div className="flex items-center space-x-4">
               <Link href="/login" className="text-gray-600 hover:text-gray-900">
                 Sign In
@@ -232,7 +232,7 @@ export default function StudentsPage() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            <Card className="shadow-lg">
+            <Card className="shadow-lg !border-green-200">
               <CardHeader>
                 <CardTitle className="flex items-center text-2xl">
                   <UserPlus className="h-6 w-6 mr-2 text-green-600" />
@@ -433,8 +433,8 @@ export default function StudentsPage() {
               </div>
 
               <div className="flex items-start">
-                <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4">
-                  <CheckCircle className="h-6 w-6 text-purple-600" />
+                <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-1">Progress Tracking</h3>
@@ -483,10 +483,10 @@ export default function StudentsPage() {
             <div className="flex items-center justify-center mb-4">
               <div className="h-8 w-8 mr-3">
                 <Image 
-                  src="/r-logo.svg" 
+                  src="/logo.png" 
                   alt="Riven Logo" 
-                  width={32} 
-                  height={32}
+                  width={24} 
+                  height={24}
                   className="h-8 w-8"
                 />
               </div>

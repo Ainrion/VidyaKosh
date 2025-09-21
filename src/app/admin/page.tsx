@@ -405,7 +405,7 @@ export default function AdminPage() {
                 <div className="flex items-center justify-center">
                   <div className="h-24 w-24 bg-white rounded-full flex items-center justify-center shadow-lg">
                     <Image 
-                      src="/r-logo.svg" 
+                      src="/logo.png" 
                       alt="Riven Logo" 
                       width={96} 
                       height={96}

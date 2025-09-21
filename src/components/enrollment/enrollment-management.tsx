@@ -520,7 +520,7 @@ export default function EnrollmentManagement() {
                   <div className="text-gray-500 mb-4">
                     <div className="h-12 w-12 mx-auto mb-2">
                       <Image 
-                        src="/r-logo.svg" 
+                        src="/logo.png" 
                         alt="Riven Logo" 
                         width={48} 
                         height={48}

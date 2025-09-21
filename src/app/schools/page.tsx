@@ -147,7 +147,7 @@ export default function SchoolsPage() {
             <div className="flex items-center">
               <div className="h-8 w-8 mr-3">
                 <Image 
-                  src="/r-logo.svg" 
+                  src="/logo.png" 
                   alt="Riven Logo" 
                   width={32} 
                   height={32}

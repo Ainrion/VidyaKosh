@@ -45,15 +45,13 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col justify-between p-8 lg:p-12">
         {/* Top Logo Section */}
         <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-200">
-          <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
-            <Image 
-              src="/r-logo.svg" 
-              alt="Riven Logo" 
-              width={32} 
-              height={32}
-              className="h-6 w-6"
-            />
-          </div>
+          <Image 
+            src="/logo.png" 
+            alt="Riven Logo" 
+            width={24} 
+            height={24}
+            className="h-8 w-8"
+          />
           <span className="text-xl font-semibold text-gray-900">Riven</span>
         </Link>
 
@@ -121,9 +119,9 @@ export default function LoginPage() {
               repeat: Infinity,
               ease: "easeInOut"
             }}
-            className="w-20 h-20 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20 flex items-center justify-center"
+            className=""
           >
-            <BookOpen className="h-10 w-10 text-white" />
+            {/* <BookOpen className="h-10 w-10 text-white" /> */}
           </motion.div>
         </div>
         
@@ -173,11 +171,11 @@ export default function LoginPage() {
             <div className="flex items-center mb-8">
               <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center mr-4">
                 <Image 
-                  src="/r-logo.svg" 
+                  src="/logo.png" 
                   alt="Riven Logo" 
-                  width={48} 
-                  height={48}
-                  className="h-12 w-12"
+                  width={24} 
+                  height={24}
+                  className="h-8 w-8"
                 />
               </div>
               <div>

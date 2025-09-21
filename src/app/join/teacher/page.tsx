@@ -201,7 +201,7 @@ export default function TeacherJoinPage() {
             <CardHeader className="text-center pb-6">
               <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
                 <Image 
-                  src="/r-logo.svg" 
+                  src="/logo.png" 
                   alt="Riven Logo" 
                   width={80} 
                   height={80}

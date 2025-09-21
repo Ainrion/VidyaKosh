@@ -22,10 +22,10 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: [
-      { url: '/r-logo.svg', type: 'image/svg+xml' },
+      { url: '/logo.png', type: 'image/png' },
       { url: '/icon.svg', type: 'image/svg+xml' },
     ],
-    shortcut: '/r-logo.svg',
+    shortcut: '/logo.png',
     apple: '/apple-touch-icon.png',
   },
 };
