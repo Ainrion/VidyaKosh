@@ -25,6 +25,7 @@ import Image from 'next/image'
 import { toastMessages } from '@/lib/toast'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
 
 interface Invitation {
   id: string
@@ -138,9 +139,28 @@ export default function StudentsPage() {
         throw new Error(data.error || 'Account creation failed')
       }
 
-      // Success - redirect to login
-      toastMessages.auth.signupSuccess()
-      router.push('/login?message=student-joined')
+      // Success - redirect based on confirmation status
+      if (data.isAutoConfirmed) {
+        if (data.session && data.redirectTo) {
+          // User is auto-signed in, set session and redirect
+          const supabase = createClient()
+          await supabase.auth.setSession(data.session)
+          toastMessages.auth.signupSuccess()
+          router.push(data.redirectTo)
+        } else if (data.requiresManualSignIn) {
+          // User needs to sign in manually
+          toastMessages.auth.signupSuccess()
+          router.push('/login?message=student-created')
+        } else {
+          // Fallback: redirect to dashboard
+          toastMessages.auth.signupSuccess()
+          router.push('/dashboard')
+        }
+      } else {
+        // User needs email confirmation, redirect to login
+        toastMessages.auth.signupSuccess()
+        router.push('/login?message=student-joined')
+      }
     } catch (error: any) {
       console.error('Signup error:', error)
       setError(error.message || 'Failed to create account. Please try again.')

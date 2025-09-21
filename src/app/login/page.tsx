@@ -40,78 +40,60 @@ export default function LoginPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex">
+    <div className="min-h-screen bg-white flex">
       {/* Left Side - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8 lg:p-12">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="w-full max-w-md"
-        >
-          <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
-            <CardHeader className="text-center pb-8">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="flex items-center justify-center mb-6"
-              >
-                <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center shadow-lg">
-                  <Image 
-                    src="/r-logo.svg" 
-                    alt="Riven Logo" 
-                    width={64} 
-                    height={64}
-                    className="h-16 w-16"
-                  />
-                </div>
-              </motion.div>
-              <CardTitle className="text-3xl font-bold text-gray-900 mb-2">
-                Welcome Back
-              </CardTitle>
-              <CardDescription className="text-lg text-gray-600">
-                Sign in to continue your learning journey
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+      <div className="flex-1 flex flex-col justify-between p-8 lg:p-12">
+        {/* Top Logo Section */}
+        <Link href="/" className="flex items-center space-x-3 hover:opacity-80 transition-opacity duration-200">
+          <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center shadow-sm">
+            <Image 
+              src="/r-logo.svg" 
+              alt="Riven Logo" 
+              width={32} 
+              height={32}
+              className="h-6 w-6"
+            />
+          </div>
+          <span className="text-xl font-semibold text-gray-900">Riven</span>
+        </Link>
+
+        {/* Main Login Content */}
+        <div className="flex-1 flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="w-full max-w-sm"
+          >
+            <div className="space-y-8">
+              {/* Header */}
+              <div className="space-y-2">
+                <h1 className="text-3xl font-bold text-gray-900">Welcome back</h1>
+                <p className="text-gray-600">Welcome back! Please enter your details.</p>
+              </div>
+
+              {/* Success Message */}
               {successMessage && (
                 <motion.div 
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-center"
+                  className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center"
                 >
                   <CheckCircle className="h-5 w-5 mr-2 flex-shrink-0" />
                   <span className="text-sm">{successMessage}</span>
                 </motion.div>
               )}
+
+              {/* Login Form */}
               <LoginForm />
-              
-              <div className="mt-8 text-center">
-                <p className="text-sm text-gray-600 mb-4">
-                  Don&apos;t have an account?
-                </p>
-                <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                  <Link 
-                    href="/teachers" 
-                    className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-200 group"
-                  >
-                    <span>Join as Teacher</span>
-                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
-                  </Link>
-                  <span className="text-gray-400 hidden sm:inline">•</span>
-                  <Link 
-                    href="/students" 
-                    className="inline-flex items-center space-x-2 text-green-600 hover:text-green-700 font-semibold transition-colors duration-200 group"
-                  >
-                    <span>Join as Student</span>
-                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
-                  </Link>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Bottom Copyright */}
+        <div className="text-center text-sm text-gray-500">
+          © Riven 2024
+        </div>
       </div>
 
       {/* Right Side - Features & Branding */}
