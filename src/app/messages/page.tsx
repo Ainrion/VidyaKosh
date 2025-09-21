@@ -33,8 +33,7 @@ export default function MessagesPage() {
   const filteredChannels = useMemo(() => {
     if (!searchQuery.trim()) return channels
     return channels.filter(channel => 
-      channel.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      channel.description?.toLowerCase().includes(searchQuery.toLowerCase())
+      (channel.name || '').toLowerCase().includes(searchQuery.toLowerCase())
     )
   }, [channels, searchQuery])
 
@@ -93,8 +92,8 @@ export default function MessagesPage() {
       }
     } catch (error) {
       console.error('Failed to fetch channels:', {
-        message: error.message,
-        stack: error.stack
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
       })
       setChannels([])
     } finally {
@@ -149,9 +148,9 @@ export default function MessagesPage() {
       setSelectedChannel(data)
     } catch (error) {
       console.error('Error creating channel:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : 'Unknown'
       })
     }
   }
@@ -204,9 +203,9 @@ export default function MessagesPage() {
       }
     } catch (error) {
       console.error('Error creating general channel:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        name: error instanceof Error ? error.name : 'Unknown'
       })
     }
   }
@@ -437,13 +436,6 @@ export default function MessagesPage() {
                                   }`}>
                                     {channel.name}
                                   </span>
-                                  {channel.description && (
-                                    <p className={`text-sm mt-1 truncate ${
-                                      selectedChannel?.id === channel.id ? 'text-indigo-700' : 'text-gray-500'
-                                    }`}>
-                                      {channel.description}
-                                    </p>
-                                  )}
                                 </div>
                               </div>
                             </div>
@@ -514,8 +506,20 @@ export default function MessagesPage() {
         {/* Enhanced Chat Interface */}
         <div className="flex-1 min-w-0">
           <ChatInterface 
-            selectedChannel={selectedChannel}
-            onChannelSelect={setSelectedChannel}
+            selectedChannel={selectedChannel ? {
+              ...selectedChannel,
+              name: selectedChannel.name || 'Unnamed Channel',
+              course_id: selectedChannel.course_id || undefined
+            } : null}
+            onChannelSelect={(channel) => {
+              setSelectedChannel({
+                id: channel.id,
+                school_id: selectedChannel?.school_id || '',
+                course_id: channel.course_id || null,
+                name: channel.name,
+                is_private: channel.is_private
+              })
+            }}
           />
         </div>
       </div>

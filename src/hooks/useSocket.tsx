@@ -15,6 +15,7 @@ type Message = Database['public']['Tables']['messages']['Row'] & {
 }
 
 interface SocketContextType {
+  socket: Socket | null
   isConnected: boolean
   joinChannel: (channelId: string) => void
   leaveChannel: (channelId: string) => void
@@ -38,8 +39,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   
   const { user, profile } = useAuth()
   const supabase = useMemo(() => createClient(), [])
-  const typingTimeoutRef = useRef<NodeJS.Timeout>()
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Initialize Socket.IO connection
   useEffect(() => {
@@ -62,7 +63,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionAttempts: 10,
-      maxReconnectionAttempts: 10,
       autoConnect: true
     })
 
@@ -97,10 +97,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     socketInstance.on('connect_error', (error) => {
       console.error('🔴 Socket connection error:', {
         message: error.message,
-        description: error.description,
-        context: error.context,
-        type: error.type,
-        transport: error.transport,
         stack: error.stack
       })
       setIsConnected(false)
@@ -333,6 +329,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const contextValue = useMemo(() => ({
+    socket,
     isConnected,
     joinChannel,
     leaveChannel,
@@ -343,6 +340,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     stopTyping,
     connectionStatus
   }), [
+    socket,
     isConnected,
     joinChannel,
     leaveChannel,

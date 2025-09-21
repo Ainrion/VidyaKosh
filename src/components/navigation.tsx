@@ -16,7 +16,6 @@ import {
   Calendar,
   Building2,
   PenTool,
-  GraduationCap,
   ChevronRight,
   Menu,
   X,
@@ -25,6 +24,7 @@ import {
   UserPlus,
   Link as LinkIcon
 } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
@@ -36,7 +36,7 @@ const navigation = {
     { name: 'Admin Panel', href: '/admin', icon: Building2 },
     { name: 'Student Invitations', href: '/admin/invitations', icon: Mail, description: 'Invite students to join school' },
     { name: 'Teacher Invitations', href: '/admin/teacher-invitations', icon: UserPlus, description: 'Invite teachers to join school' },
-    { name: 'Course Enrollments', href: '/admin/enrollments', icon: GraduationCap, description: 'Manage student course enrollments' },
+    { name: 'Course Enrollments', href: '/admin/enrollments', icon: BookOpen, description: 'Manage student course enrollments' },
     { name: 'Courses', href: '/courses', icon: BookOpen },
     { name: 'Quiz Builder', href: '/quiz-builder', icon: Target },
     { name: 'Exams', href: '/exams', icon: ClipboardList },
@@ -82,8 +82,14 @@ export function Navigation() {
     return (
       <nav className="flex h-screen flex-col bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700 shadow-2xl w-16">
         <div className="flex h-20 items-center justify-center border-b border-slate-700">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-            <GraduationCap className="h-6 w-6 text-white" />
+          <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
+            <Image 
+              src="/r-logo.svg" 
+              alt="Riven Logo" 
+              width={40} 
+              height={40}
+              className="h-10 w-10"
+            />
           </div>
         </div>
         <div className="flex-1 flex items-center justify-center">
@@ -114,8 +120,14 @@ export function Navigation() {
       )}>
         {!isCollapsed && (
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-              <GraduationCap className="h-6 w-6 text-white" />
+            <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
+              <Image 
+                src="/r-logo.svg" 
+                alt="Riven Logo" 
+                width={40} 
+                height={40}
+                className="h-10 w-10"
+              />
             </div>
             <div>
               <h1 className="text-xl font-bold text-white">Riven</h1>
@@ -126,8 +138,14 @@ export function Navigation() {
         
         {isCollapsed && (
           <div className="flex flex-col items-center gap-2">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-              <GraduationCap className="h-6 w-6 text-white" />
+            <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
+              <Image 
+                src="/r-logo.svg" 
+                alt="Riven Logo" 
+                width={40} 
+                height={40}
+                className="h-10 w-10"
+              />
             </div>
             <Button
               variant="ghost"

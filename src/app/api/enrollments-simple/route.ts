@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
         total: 0,
         message: 'No enrollments found or enrollments table not set up',
         debug: {
-          error: error?.message || 'No error',
+          error: error instanceof Error ? error.message : 'No error',
           tableExists: !error,
           enrollmentsCount: enrollments?.length || 0
         }
@@ -68,8 +68,8 @@ export async function GET(request: NextRequest) {
     const courseIds = [...new Set(enrollments.map(e => e.course_id))]
 
     // Fetch student and course data
-    let students = []
-    let courses = []
+    let students: any[] = []
+    let courses: any[] = []
 
     try {
       if (studentIds.length > 0) {

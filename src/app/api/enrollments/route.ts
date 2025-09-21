@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     }
 
     // First, let's try a simple query to see if the enrollments table exists
-    let rawEnrollments = []
+    let rawEnrollments: any[] = []
     let enrollmentsError = null
 
     try {
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching enrollments:', enrollmentsError)
       return NextResponse.json({ 
         error: 'Failed to fetch enrollments',
-        details: enrollmentsError.message 
+        details: enrollmentsError instanceof Error ? enrollmentsError.message : 'Unknown error'
       }, { status: 500 })
     }
 
@@ -114,8 +114,8 @@ export async function GET(request: NextRequest) {
     const courseIds = rawEnrollments ? [...new Set(rawEnrollments.map(e => e.course_id))] : []
 
     // Fetch related data separately to avoid complex joins
-    let studentsResult = { data: [], error: null }
-    let coursesResult = { data: [], error: null }
+    let studentsResult: any = { data: [], error: null }
+    let coursesResult: any = { data: [], error: null }
 
     try {
       if (studentIds.length > 0) {
@@ -152,13 +152,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Create maps for quick lookup
-    const studentsMap = new Map((studentsResult.data || []).map(s => [s.id, s]))
-    const coursesMap = new Map((coursesResult.data || []).map(c => [c.id, c]))
+    const studentsMap = new Map((studentsResult.data || []).map((s: any) => [s.id, s]))
+    const coursesMap = new Map((coursesResult.data || []).map((c: any) => [c.id, c]))
 
     // Transform the data to match the expected format
     const enrollments = (rawEnrollments || []).map(enrollment => {
-      const student = studentsMap.get(enrollment.student_id)
-      const course = coursesMap.get(enrollment.course_id)
+      const student = studentsMap.get(enrollment.student_id) as any
+      const course = coursesMap.get(enrollment.course_id) as any
 
       return {
         enrollment_id: enrollment.enrollment_id,

@@ -54,7 +54,7 @@ export default function EmailConfigChecker() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           to: testEmail,
-          subject: 'Test Email from Vidyakosh',
+          subject: 'Test Email from Riven',
           message: 'This is a test email to verify your email configuration is working correctly.'
         })
       })

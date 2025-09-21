@@ -6,13 +6,19 @@ import { useSocket } from '@/hooks/useSocket'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import ChatInterfaceEnhanced from '@/components/communication/chat-interface-enhanced'
+import ChatInterface from '@/components/communication/chat-interface'
 import { MessageSquare, Plus, Users } from 'lucide-react'
 import { useEffect, useState, useCallback, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 
-type Channel = Database['public']['Tables']['channels']['Row']
+type DatabaseChannel = Database['public']['Tables']['channels']['Row']
+type Channel = {
+  id: string
+  name: string
+  is_private: boolean
+  course_id?: string
+}
 
 export default function MessagesPage() {
   const { profile } = useAuth()
@@ -48,11 +54,18 @@ export default function MessagesPage() {
       }
 
       console.log('Fetched channels:', data)
-      setChannels(data || [])
+      // Filter out channels with null names and provide default names
+      const validChannels: Channel[] = (data || []).map(channel => ({
+        id: channel.id,
+        name: channel.name || 'Unnamed Channel',
+        is_private: channel.is_private,
+        course_id: channel.course_id || undefined
+      }))
+      setChannels(validChannels)
       
       // Auto-select first channel if none selected
-      if (data && data.length > 0 && !selectedChannel) {
-        setSelectedChannel(data[0])
+      if (validChannels.length > 0 && !selectedChannel) {
+        setSelectedChannel(validChannels[0])
       }
     } catch (error) {
       console.error('Failed to fetch channels:', error)
@@ -264,7 +277,7 @@ export default function MessagesPage() {
 
         {/* Enhanced Chat Interface */}
         <div className="col-span-3">
-          <ChatInterfaceEnhanced 
+          <ChatInterface 
             selectedChannel={selectedChannel}
             onChannelSelect={setSelectedChannel}
           />

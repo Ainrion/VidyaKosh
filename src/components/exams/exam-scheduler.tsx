@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
+  X,
   Plus,
   Edit,
   Trash2

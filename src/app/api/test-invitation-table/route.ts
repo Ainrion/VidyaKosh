@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const { email = 'test@example.com' } = body
 
     // Test invitation creation step by step
-    const testResults = {
+    const testResults: any = {
       steps: {}
     }
 

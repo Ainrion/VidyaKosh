@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     // Use manual approach for bulk enrollment
     console.log('Using manual bulk enrollment approach')
-    let results = []
+    const results = []
 
     // First, check if enrollments table exists
     console.log('Bulk enrollment API: Checking enrollments table')

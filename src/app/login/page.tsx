@@ -6,7 +6,8 @@ import { LoginForm } from '@/components/auth/login-form'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { GraduationCap, BookOpen, Users, Award, Sparkles, ArrowRight, CheckCircle } from 'lucide-react'
+import { BookOpen, Users, Award, Sparkles, ArrowRight, CheckCircle } from 'lucide-react'
+import Image from 'next/image'
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
@@ -56,8 +57,14 @@ export default function LoginPage() {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="flex items-center justify-center mb-6"
               >
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-                  <GraduationCap className="h-8 w-8 text-white" />
+                <div className="h-16 w-16 rounded-2xl bg-white flex items-center justify-center shadow-lg">
+                  <Image 
+                    src="/r-logo.svg" 
+                    alt="Riven Logo" 
+                    width={64} 
+                    height={64}
+                    className="h-16 w-16"
+                  />
                 </div>
               </motion.div>
               <CardTitle className="text-3xl font-bold text-gray-900 mb-2">
@@ -84,13 +91,23 @@ export default function LoginPage() {
                 <p className="text-sm text-gray-600 mb-4">
                   Don&apos;t have an account?
                 </p>
-                <Link 
-                  href="/signup" 
-                  className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-200 group"
-                >
-                  <span>Create your account</span>
-                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
-                </Link>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <Link 
+                    href="/teachers" 
+                    className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-200 group"
+                  >
+                    <span>Join as Teacher</span>
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+                  </Link>
+                  <span className="text-gray-400 hidden sm:inline">•</span>
+                  <Link 
+                    href="/students" 
+                    className="inline-flex items-center space-x-2 text-green-600 hover:text-green-700 font-semibold transition-colors duration-200 group"
+                  >
+                    <span>Join as Student</span>
+                    <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
+                  </Link>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -173,7 +190,13 @@ export default function LoginPage() {
           >
             <div className="flex items-center mb-8">
               <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center mr-4">
-                <GraduationCap className="h-6 w-6 text-white" />
+                <Image 
+                  src="/r-logo.svg" 
+                  alt="Riven Logo" 
+                  width={48} 
+                  height={48}
+                  className="h-12 w-12"
+                />
               </div>
               <div>
                 <h1 className="text-2xl font-bold">Riven</h1>

@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CheckCircle, User, Mail, School, Lock, ArrowRight, Loader2, GraduationCap, Users, BookOpen } from 'lucide-react'
+import { CheckCircle, User, Mail, School, Lock, ArrowRight, Loader2, Users, BookOpen } from 'lucide-react'
+import Image from 'next/image'
 import { toastMessages } from '@/lib/toast'
 import { motion } from 'framer-motion'
+import { createClient } from '@/lib/supabase/client'
 
 interface TeacherJoinData {
   id: string
@@ -121,8 +123,28 @@ export default function TeacherJoinPage() {
         throw new Error(data.error || 'Account creation failed')
       }
 
-      toastMessages.auth.signupSuccess()
-      router.push('/login?message=teacher-joined')
+      // Check if user was automatically signed in
+      if (data.session && data.redirectTo) {
+        // User was automatically signed in, set the session and redirect to dashboard
+        const supabase = createClient()
+        
+        // Set the session in the client
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token
+        })
+        
+        toastMessages.auth.signupSuccess()
+        router.push(data.redirectTo)
+      } else if (data.requiresManualSignIn) {
+        // User needs to sign in manually
+        toastMessages.auth.signupSuccess()
+        router.push('/login?message=teacher-joined')
+      } else {
+        // Fallback to login page
+        toastMessages.auth.signupSuccess()
+        router.push('/login?message=teacher-joined')
+      }
     } catch (error: any) {
       console.error('Error creating teacher account:', error)
       setError(error.message || 'Failed to create account. Please try again.')
@@ -177,8 +199,14 @@ export default function TeacherJoinPage() {
         >
           <Card className="shadow-xl border-0">
             <CardHeader className="text-center pb-6">
-              <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                <GraduationCap className="h-10 w-10 text-white" />
+              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+                <Image 
+                  src="/r-logo.svg" 
+                  alt="Riven Logo" 
+                  width={80} 
+                  height={80}
+                  className="h-20 w-20"
+                />
               </div>
               <CardTitle className="text-3xl font-bold text-gray-900">Join as Teacher</CardTitle>
               <CardDescription className="text-gray-600 text-lg">

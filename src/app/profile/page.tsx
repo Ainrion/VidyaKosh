@@ -377,7 +377,7 @@ export default function ProfilePage() {
                     ></div>
                   </div>
                   <p className="text-xs text-gray-500">
-                    Complete your profile to get the most out of Vidyakosh
+                    Complete your profile to get the most out of Riven
                   </p>
                 </div>
               </CardContent>

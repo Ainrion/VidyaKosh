@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/hooks/useAuth'
 // DashboardLayout is now handled globally in AppLayout
@@ -19,20 +19,17 @@ import {
   TrendingUp, 
   Calendar,
   Shield,
-  AlertTriangle,
   CheckCircle,
   BarChart3,
   Settings,
   UserPlus,
-  GraduationCap,
-  Mail,
-  X
+  Mail
 } from 'lucide-react'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 
 type School = Database['public']['Tables']['schools']['Row']
-type Profile = Database['public']['Tables']['profiles']['Row']
 
 interface SchoolStats {
   totalStudents: number
@@ -80,13 +77,7 @@ export default function AdminPage() {
   const [inviteSuccess, setInviteSuccess] = useState('')
   const supabase = createClient()
 
-  useEffect(() => {
-    if (profile?.role === 'admin' && profile.school_id) {
-      fetchSchoolData()
-    }
-  }, [profile])
-
-  const fetchSchoolData = async () => {
+  const fetchSchoolData = useCallback(async () => {
     if (!profile?.school_id) return
 
     try {
@@ -199,7 +190,13 @@ export default function AdminPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [profile?.school_id, supabase])
+
+  useEffect(() => {
+    if (profile?.role === 'admin' && profile.school_id) {
+      fetchSchoolData()
+    }
+  }, [profile, fetchSchoolData])
 
   const handleQuickAction = (action: string) => {
     switch (action) {
@@ -311,7 +308,7 @@ export default function AdminPage() {
       case 'assignment_created':
         return <FileText className="h-4 w-4 text-purple-500" />
       case 'enrollment':
-        return <GraduationCap className="h-4 w-4 text-orange-500" />
+        return <BookOpen className="h-4 w-4 text-orange-500" />
       default:
         return <TrendingUp className="h-4 w-4 text-gray-500" />
     }
@@ -379,8 +376,14 @@ export default function AdminPage() {
                   </div>
                 </div>
                 <div className="flex items-center justify-center">
-                  <div className="h-24 w-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                    <GraduationCap className="h-12 w-12 text-white" />
+                  <div className="h-24 w-24 bg-white rounded-full flex items-center justify-center shadow-lg">
+                    <Image 
+                      src="/r-logo.svg" 
+                      alt="Riven Logo" 
+                      width={96} 
+                      height={96}
+                      className="h-24 w-24"
+                    />
                   </div>
                 </div>
               </div>
@@ -499,7 +502,7 @@ export default function AdminPage() {
                   variant="outline"
                   onClick={() => handleQuickAction('quiz_builder')}
                 >
-                  <GraduationCap className="h-4 w-4 mr-2" />
+                  <BookOpen className="h-4 w-4 mr-2" />
                   Quiz Builder
                 </Button>
                 <Button 

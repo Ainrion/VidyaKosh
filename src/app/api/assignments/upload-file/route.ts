@@ -71,13 +71,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate unique filename
-    const fileExtension = file.name.split('.').pop()
     const timestamp = Date.now()
     const fileName = `${user.id}/${courseId}/${timestamp}-${file.name}`
     const filePath = `assignments/${fileName}`
 
     // Upload file to Supabase storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('assignment-files')
       .upload(filePath, file, {
         cacheControl: '3600',

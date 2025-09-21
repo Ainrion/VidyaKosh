@@ -169,7 +169,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       code,
       message: 'Enrollment code created successfully',
-      enrollmentUrl: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/enroll?code=${enrollmentCode}`
+      enrollmentUrl: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/enroll?code=${enrollmentCode}`
     })
   } catch (error) {
     console.error('Error in enrollment codes POST:', error)

@@ -13,7 +13,6 @@ import {
   MessageSquare, 
   BarChart3, 
   ArrowRight, 
-  GraduationCap, 
   Award, 
   Shield, 
   Zap,
@@ -23,6 +22,7 @@ import {
   Mail,
   PlayCircle
 } from 'lucide-react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -55,26 +55,65 @@ const SchoolRegistrationForm = ({ onClose }: { onClose: () => void }) => {
       return
     }
     
+    // Validate required fields
+    if (!formData.schoolName.trim()) {
+      setError('School name is required')
+      return
+    }
+    
+    if (!formData.adminEmail.trim()) {
+      setError('Admin email is required')
+      return
+    }
+    
+    if (!formData.adminName.trim()) {
+      setError('Admin name is required')
+      return
+    }
+    
+    if (!formData.password.trim()) {
+      setError('Password is required')
+      return
+    }
+    
     setLoading(true)
     setError('')
 
     try {
       // First create the school using public API
+      const schoolData = {
+        name: formData.schoolName,
+        address: formData.address,
+        phone: formData.phone,
+        email: formData.adminEmail
+      }
+      
+      console.log('Creating school with data:', schoolData)
+      
       const schoolResponse = await fetch('/api/schools/public', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: formData.schoolName,
-          address: formData.address,
-          phone: formData.phone,
-          email: formData.adminEmail
-        })
+        body: JSON.stringify(schoolData)
       })
+      
+      console.log('School response status:', schoolResponse.status)
+      console.log('School response headers:', Object.fromEntries(schoolResponse.headers.entries()))
 
-      const schoolData = await schoolResponse.json()
+      const schoolResponseData = await schoolResponse.json()
+      console.log('School response data:', schoolResponseData)
 
       if (!schoolResponse.ok) {
-        throw new Error(schoolData.error || 'Failed to create school')
+        console.error('School creation failed:', schoolResponseData)
+        const errorMessage = schoolResponseData.error || schoolResponseData.details || 'Failed to create school'
+        
+        // Handle specific error cases
+        if (errorMessage.includes('already exists')) {
+          const detailsMessage = schoolResponseData.details || 'Please try with a different name or email.'
+          setError(`${errorMessage}. ${detailsMessage}`)
+        } else {
+          setError(`School creation failed: ${errorMessage}`)
+        }
+        return
       }
 
       // Then signup the admin user
@@ -87,14 +126,15 @@ const SchoolRegistrationForm = ({ onClose }: { onClose: () => void }) => {
           fullName: formData.adminName,
           role: 'admin',
           schoolName: formData.schoolName,
-          schoolId: schoolData.school.id
+          schoolId: schoolResponseData.school.id
         })
       })
 
       const signupData = await signupResponse.json()
 
       if (!signupResponse.ok) {
-        throw new Error(signupData.error || 'Signup failed')
+        console.error('Signup failed:', signupData)
+        throw new Error(signupData.error || signupData.details || 'Signup failed')
       }
 
       // Success - redirect to login with success message
@@ -362,8 +402,14 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center shadow-lg">
-                  <GraduationCap className="h-6 w-6 text-white" />
+                <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center shadow-lg">
+                  <Image 
+                    src="/r-logo.svg" 
+                    alt="Riven Logo" 
+                    width={40} 
+                    height={40}
+                    className="h-10 w-10"
+                  />
                 </div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Riven
@@ -622,8 +668,14 @@ export default function Home() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               <div className="col-span-1 md:col-span-2">
                 <div className="flex items-center space-x-3 mb-6">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-                    <GraduationCap className="h-6 w-6 text-white" />
+                  <div className="h-10 w-10 rounded-xl bg-white flex items-center justify-center">
+                    <Image 
+                      src="/r-logo.svg" 
+                      alt="Riven Logo" 
+                      width={40} 
+                      height={40}
+                      className="h-10 w-10"
+                    />
                   </div>
                   <span className="text-2xl font-bold">Riven</span>
                 </div>

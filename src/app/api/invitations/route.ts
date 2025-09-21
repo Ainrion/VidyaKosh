@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       console.error('Error fetching invitations:', error)
       return NextResponse.json({ 
         error: 'Failed to fetch invitations',
-        details: error.message 
+        details: error instanceof Error ? error.message : 'Unknown error'
       }, { status: 500 })
     }
 
@@ -97,8 +97,8 @@ export async function GET(request: NextRequest) {
     const acceptedByIds = [...new Set(invitations.map(i => i.accepted_by).filter(Boolean))]
 
     // Fetch related profiles
-    let invitedByProfiles = []
-    let acceptedByProfiles = []
+    let invitedByProfiles: any[] = []
+    let acceptedByProfiles: any[] = []
 
     try {
       if (invitedByIds.length > 0) {
@@ -292,12 +292,20 @@ export async function POST(request: NextRequest) {
     }
 
     // Send email notification
-    const invitationUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/signup?invite=${invitationCode}`
+    const invitationUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/signup?invite=${invitationCode}`
     
     let emailSent = false
     let emailError = null
     
     try {
+      console.log('📧 Attempting to send invitation email to:', email)
+      console.log('📧 Email configuration check:', {
+        SMTP_HOST: !!process.env.SMTP_HOST,
+        SMTP_USER: !!process.env.SMTP_USER,
+        SMTP_PASS: !!process.env.SMTP_PASS,
+        SENDGRID_API_KEY: !!process.env.SENDGRID_API_KEY
+      })
+      
       emailSent = await sendInvitationEmail({
         recipientName: email.split('@')[0], // Use email prefix as name
         recipientEmail: email,
@@ -314,10 +322,16 @@ export async function POST(request: NextRequest) {
         console.log('✅ Invitation email sent successfully to:', email)
       } else {
         console.warn('❌ Failed to send invitation email to:', email)
-        emailError = 'Email sending failed - please check your email configuration'
+        emailError = 'Email sending failed - SMTP connection or configuration issue'
       }
     } catch (err) {
       console.error('❌ Error sending invitation email:', err)
+      console.error('❌ Error details:', {
+        message: err instanceof Error ? err.message : 'Unknown error',
+        stack: err instanceof Error ? err.stack : undefined,
+        type: typeof err,
+        constructor: err?.constructor?.name
+      })
       emailError = err instanceof Error ? err.message : 'Unknown email error'
     }
 

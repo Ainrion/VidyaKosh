@@ -5,791 +5,414 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { CheckCircle, Mail, UserPlus, School, GraduationCap, Sparkles, ArrowRight, Users, BookOpen, Award, Shield, Zap, Heart, RefreshCw } from 'lucide-react'
+import { 
+  Building2, 
+  ArrowRight, 
+  Users, 
+  BookOpen, 
+  Shield,
+  Zap,
+  Heart
+} from 'lucide-react'
+import Image from 'next/image'
 import { toastMessages } from '@/lib/toast'
-import { motion, AnimatePresence } from 'framer-motion'
-
-interface Invitation {
-  id: string
-  email: string
-  invitation_code: string
-  message?: string
-  school: {
-    name: string
-    email: string
-    address: string
-  }
-  invited_by_profile: {
-    full_name: string
-    email: string
-  }
-}
+import { motion } from 'framer-motion'
+import Link from 'next/link'
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     fullName: '',
-    schoolName: '',
-    role: 'admin' as 'admin' | 'teacher' | 'student',
-    invitationCode: ''
-  })
-  const [invitationFormData, setInvitationFormData] = useState({
-    email: '',
-    password: '',
-    fullName: '',
-    invitationCode: ''
+    schoolName: ''
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [invitation, setInvitation] = useState<Invitation | null>(null)
-  const [validatingInvitation, setValidatingInvitation] = useState(false)
-  const [invitationError, setInvitationError] = useState('')
-  const [activeTab, setActiveTab] = useState('invitation') // Default to student signup
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // Check for invitation code in URL params
+  // Redirect users to appropriate pages based on role or invitation
   useEffect(() => {
-    const code = searchParams.get('code')
     const roleParam = searchParams.get('role')
+    const code = searchParams.get('code')
     const inviteParam = searchParams.get('invite')
     
-    if (code) {
-      // Student invitation - use invitation tab
-      setInvitationFormData(prev => ({ ...prev, invitationCode: code }))
-      setActiveTab('invitation') // Stay on student signup tab
-    } else if (inviteParam) {
-      // Handle student invitations with ?invite=CODE format
-      validateInvitationAndSetup(inviteParam)
+    // If no role specified, redirect to teacher landing page
+    if (!roleParam && !code && !inviteParam) {
+      router.push('/teachers')
+      return
     }
-  }, [searchParams])
-
-  const validateInvitationAndSetup = async (invitationCode: string) => {
-    setValidatingInvitation(true)
-    try {
-      const response = await fetch(`/api/invitations/validate?code=${invitationCode}`)
-      if (response.ok) {
-        const data = await response.json()
-        const { invitation } = data
-        
-        if (invitation.role === 'teacher') {
-          // Teacher invitation - redirect to new teacher join flow
-          window.location.href = `/join/teacher?token=${invitationCode}`
-        } else {
-          // Student invitation - use invitation tab
-          setInvitationFormData(prev => ({ ...prev, invitationCode }))
-          setActiveTab('invitation') // Stay on student signup tab
-          // Auto-validate the invitation
-          handleInvitationCodeChange(invitationCode)
-        }
-      } else {
-        setInvitationError('Invalid or expired invitation code')
-      }
-    } catch (error) {
-      console.error('Error validating invitation:', error)
-      setInvitationError('Error validating invitation code')
-    } finally {
-      setValidatingInvitation(false)
-    }
-  }
-
-  const validateInvitationCode = async (code: string) => {
-    if (!code.trim()) {
-      setInvitation(null)
-      setInvitationError('')
+    
+    // Handle role-based redirects
+    if (roleParam === 'teacher') {
+      router.push('/teachers')
       return
     }
 
-    setValidatingInvitation(true)
-    setInvitationError('')
-
-    try {
-      const response = await fetch(`/api/invitations/validate?code=${encodeURIComponent(code)}`)
-      const data = await response.json()
-
-      if (!response.ok) {
-        console.error('Invitation validation failed:', {
-          code,
-          status: response.status,
-          error: data.error
-        })
-        setInvitationError(data.error || 'Invalid invitation code')
-        setInvitation(null)
+    if (roleParam === 'student') {
+      router.push('/students')
         return
       }
 
-      setInvitation(data.invitation)
-      setInvitationFormData(prev => ({ 
-        ...prev, 
-        email: data.invitation.email 
-      }))
-    } catch (error) {
-      console.error('Error validating invitation:', error)
-      setInvitationError('Failed to validate invitation code')
-      setInvitation(null)
-    } finally {
-      setValidatingInvitation(false)
+    // Handle invitation codes
+    if (code || inviteParam) {
+      const invitationCode = code || inviteParam
+      // Redirect to student signup with invitation
+      router.push(`/students?${code ? 'code' : 'invite'}=${invitationCode}`)
+      return
     }
-  }
-
-  const handleInvitationCodeChange = (code: string) => {
-    setInvitationFormData(prev => ({ ...prev, invitationCode: code }))
     
-    // Debounce validation
-    const timeoutId = setTimeout(() => {
-      validateInvitationCode(code)
-    }, 500)
-
-    return () => clearTimeout(timeoutId)
-  }
-
-
-  const handleInvitationSignup = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setInvitationError('')
-
-    console.log('Invitation form data:', invitationFormData)
-
-    try {
-      // Validate required fields
-      if (!invitationFormData.email || !invitationFormData.password || !invitationFormData.fullName || !invitationFormData.invitationCode) {
-        throw new Error('Please fill in all required fields')
-      }
-      
-      // Validate invitation before proceeding
-      if (!invitation) {
-        throw new Error('Please enter a valid invitation code')
-      }
-
-      console.log('Sending invitation signup data:', { 
-        email: invitationFormData.email, 
-        fullName: invitationFormData.fullName, 
-        role: 'student',
-        invitationCode: invitationFormData.invitationCode,
-        password: '[HIDDEN]'
-      })
-
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: invitationFormData.email,
-          password: invitationFormData.password,
-          fullName: invitationFormData.fullName,
-          role: 'student',
-          invitationCode: invitationFormData.invitationCode
-        })
-      })
-
-      let data
-      try {
-        data = await response.json()
-      } catch (jsonError) {
-        console.error('Failed to parse response JSON:', jsonError)
-        throw new Error('Server returned invalid response')
-      }
-
-      if (!response.ok) {
-        console.error('Invitation signup API error:', { 
-          status: response.status, 
-          statusText: response.statusText, 
-          data 
-        })
-        
-        // Handle different error scenarios
-        if (response.status === 500) {
-          throw new Error('Internal server error. Please try again later.')
-        } else if (data && data.error) {
-          throw new Error(data.error)
-        } else if (data && typeof data === 'object' && Object.keys(data).length === 0) {
-          throw new Error('Server returned empty response. Please check your invitation code and try again.')
-        } else {
-          throw new Error('Signup failed. Please check your details and try again.')
-        }
-      }
-
-      // Check if email confirmation is required
-      if (data.requiresEmailConfirmation) {
-        toastMessages.auth.emailVerificationSent()
-        // Show email confirmation message instead of redirecting
-        setInvitationError('') // Clear any errors
-        // You could redirect to a confirmation page or show a modal
-        setTimeout(() => {
-          router.push('/login?message=' + encodeURIComponent('Please check your email and click the confirmation link to activate your account.'))
-        }, 3000)
-      } else {
-        toastMessages.auth.signupSuccess()
-        router.push('/login')
-      }
-    } catch (error) {
-      console.error('Error in invitation signup:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Signup failed'
-      setInvitationError(errorMessage)
-      toastMessages.auth.signupError(errorMessage)
-    } finally {
-      setLoading(false)
+    // Only allow admin signup on this page
+    if (roleParam !== 'admin') {
+      router.push('/teachers')
+      return
     }
-  }
+  }, [searchParams, router])
 
-  const handleSignup = async (e: React.FormEvent) => {
+  // Admin signup form submission
+  const handleAdminSignup = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
     try {
       // Validate required fields
-      if (!formData.email || !formData.password || !formData.fullName) {
+      if (!formData.email || !formData.password || !formData.fullName || !formData.schoolName) {
         throw new Error('Please fill in all required fields')
       }
 
-      // For admin role, ensure schoolName is provided if no schoolId
-      if (formData.role === 'admin' && !formData.schoolName) {
-        throw new Error('School name is required for admin registration')
+      // Validate password strength
+      if (formData.password.length < 6) {
+        throw new Error('Password must be at least 6 characters long')
       }
 
-      console.log('Sending signup data:', { ...formData, password: '[HIDDEN]' })
-
+      // Create admin account
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          fullName: formData.fullName,
+          schoolName: formData.schoolName,
+          role: 'admin'
+        }),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        console.error('Signup API error:', data)
-        throw new Error(data.error || 'Signup failed')
+        throw new Error(data.error || 'Account creation failed')
       }
 
-      // Check if email confirmation is required
-      if (data.requiresEmailConfirmation) {
-        toastMessages.auth.emailVerificationSent()
-        // Show email confirmation message instead of redirecting
-        setError('') // Clear any errors
-        // You could redirect to a confirmation page or show a modal
-        setTimeout(() => {
-          router.push('/login?message=' + encodeURIComponent('Please check your email and click the confirmation link to activate your account.'))
-        }, 3000)
-      } else {
+      // Success - redirect to login
         toastMessages.auth.signupSuccess()
-        router.push('/login')
-      }
-    } catch (error) {
-      console.error('Error in signup:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Signup failed'
-      setError(errorMessage)
-      toastMessages.auth.signupError(errorMessage)
+      router.push('/login?message=admin-created')
+    } catch (error: any) {
+      console.error('Admin signup error:', error)
+      setError(error.message || 'Failed to create account. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
-  const benefits = [
-    {
-      icon: Shield,
-      title: 'Secure & Private',
-      description: 'Your data is protected with enterprise-grade security'
-    },
-    {
-      icon: Zap,
-      title: 'Lightning Fast',
-      description: 'Optimized for speed and seamless user experience'
-    },
-    {
-      icon: Heart,
-      title: 'Made with Love',
-      description: 'Crafted by educators, for educators and students'
-    }
-  ]
+  // Only show admin signup form if role=admin is specified
+  const isAdminSignup = searchParams.get('role') === 'admin'
 
-  const roleDescriptions = {
-    admin: 'Full access to manage school, users, and all content. Create school first from landing page.',
-    teacher: 'Create courses, manage students, and track progress. Preferably use invitation link from admin.',
-    student: 'Access courses, submit assignments, and track learning. Requires invitation code.'
+  if (!isAdminSignup) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Redirecting...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 flex">
-      {/* Left Side - Signup Form */}
-      <div className="flex-1 flex items-center justify-center p-8 lg:p-12">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-indigo-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-6">
+            <div className="flex items-center">
+              <div className="h-8 w-8 mr-3">
+                <Image 
+                  src="/r-logo.svg" 
+                  alt="Riven Logo" 
+                  width={32} 
+                  height={32}
+                  className="h-8 w-8"
+                />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">Riven</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link href="/login" className="text-gray-600 hover:text-gray-900">
+                Sign In
+              </Link>
+              <Link href="/teachers" className="text-gray-600 hover:text-gray-900">
+                Join as Teacher
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        {/* Hero Section */}
+        <div className="text-center mb-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <h1 className="text-5xl font-bold text-gray-900 mb-6">
+              Create Your <span className="text-purple-600">School</span>
+            </h1>
+            <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+              Set up your educational institution and start managing teachers, students, and courses with Riven's comprehensive learning management system.
+            </p>
+          </motion.div>
+        </div>
+
+        {/* Main Content */}
+        <div className="grid lg:grid-cols-2 gap-12 items-start">
+          {/* Signup Form */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="w-full max-w-lg"
-        >
-          <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
-            <CardHeader className="text-center pb-6">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="flex items-center justify-center mb-6"
-              >
-                <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-blue-600 flex items-center justify-center shadow-lg">
-                  <GraduationCap className="h-8 w-8 text-white" />
-                </div>
-              </motion.div>
-              <CardTitle className="text-3xl font-bold text-gray-900 mb-2">
-                Join Riven
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            <Card className="shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center text-2xl">
+                  <Building2 className="h-6 w-6 mr-2 text-purple-600" />
+                  School Administrator Signup
               </CardTitle>
-              <CardDescription className="text-lg text-gray-600">
-                Start your educational journey today
+                <CardDescription>
+                  Create your school account and start building your educational community
               </CardDescription>
             </CardHeader>
-            
             <CardContent>
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-8 bg-gray-100">
-                  <TabsTrigger 
-                    value="invitation"
-                    className="data-[state=active]:bg-white data-[state=active]:text-emerald-600 data-[state=active]:shadow-sm font-medium"
-                  >
-                    <Mail className="h-4 w-4 mr-2" />
-                    Student Signup
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="regular" 
-                    className="data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm font-medium"
-                  >
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Admin Signup
-                  </TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="regular" className="space-y-6">
-                  <motion.form 
-                    onSubmit={handleSignup} 
-                    className="space-y-6"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                          {((searchParams.get('code') && searchParams.get('role') === 'teacher') || (formData.invitationCode && formData.role === 'teacher')) && (
-                            <motion.div 
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg"
-                            >
-                              <div className="flex items-center">
-                                <Mail className="h-5 w-5 mr-2" />
-                                <span className="text-sm font-medium">Teacher Invitation</span>
-                              </div>
-                              <p className="text-sm mt-1">
-                                You've been invited to join as a teacher. Please complete your registration below.
-                              </p>
-                            </motion.div>
-                          )}
-
-                          {validatingInvitation && (
-                            <motion.div 
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg"
-                            >
-                              <div className="flex items-center">
-                                <RefreshCw className="h-5 w-5 mr-2 animate-spin" />
-                                <span className="text-sm font-medium">Validating Invitation</span>
-                              </div>
-                              <p className="text-sm mt-1">
-                                Please wait while we validate your invitation...
-                              </p>
-                            </motion.div>
-                          )}
-                    
-                    {error && (
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg"
-                      >
-                        {error}
-                      </motion.div>
-                    )}
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="fullName" className="text-sm font-medium text-gray-700">Full Name</Label>
+                <form onSubmit={handleAdminSignup} className="space-y-6">
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <Label htmlFor="fullName">Your Full Name</Label>
                         <Input
                           id="fullName"
                           type="text"
                           value={formData.fullName}
                           onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
                           placeholder="Enter your full name"
-                          className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                           required
+                        className="mt-1"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-sm font-medium text-gray-700">Email</Label>
+
+                    <div>
+                      <Label htmlFor="email">Email Address</Label>
                         <Input
                           id="email"
                           type="email"
                           value={formData.email}
                           onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                           placeholder="Enter your email"
-                          className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                           required
+                        className="mt-1"
                         />
-                      </div>
                     </div>
                     
-                    <div className="space-y-2">
-                      <Label htmlFor="password" className="text-sm font-medium text-gray-700">Password</Label>
+                    <div>
+                      <Label htmlFor="password">Password</Label>
                       <Input
                         id="password"
                         type="password"
                         value={formData.password}
                         onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                        placeholder="Create a strong password"
-                        className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                        placeholder="Create a password"
                         required
+                        className="mt-1"
                       />
+                      <p className="text-sm text-gray-500 mt-1">
+                        Must be at least 6 characters long
+                      </p>
                     </div>
 
-                    {/* Only show school name field if not coming from teacher invitation */}
-                    {!(searchParams.get('code') && searchParams.get('role') === 'teacher') && !formData.invitationCode && (
-                      <div className="space-y-2">
-                        <Label htmlFor="schoolName" className="text-sm font-medium text-gray-700">School Name</Label>
+                    <div>
+                      <Label htmlFor="schoolName">School Name</Label>
                         <Input
                           id="schoolName"
                           type="text"
                           value={formData.schoolName}
                           onChange={(e) => setFormData(prev => ({ ...prev, schoolName: e.target.value }))}
-                          placeholder="Enter your school name exactly as it should appear"
-                          className="border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                          required={formData.role === 'admin'}
+                        placeholder="Enter your school name"
+                        required
+                        className="mt-1"
                         />
-                        <p className="text-xs text-gray-500">
-                          {formData.role === 'teacher' ? 
-                            "If you have an invitation link from your admin, use that instead for automatic school assignment." :
-                            "For admin registration, create the school first from the landing page."
-                          }
-                        </p>
                       </div>
-                    )}
-
-
-                    <div className="space-y-3">
-                      <Label className="text-sm font-medium text-gray-700">Role</Label>
-                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
-                        <p className="text-sm text-blue-800">
-                          <strong>Note:</strong> Students must sign up using an invitation code (use the "Student Signup" tab). Teachers will receive invitation links from their school admin.
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-1 gap-3">
-                        <motion.div
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <label className={`flex items-center p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                            formData.role === 'admin' 
-                              ? 'border-blue-500 bg-blue-50' 
-                              : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                          }`}>
-                            <input
-                              type="radio"
-                              name="role"
-                              value="admin"
-                              checked={formData.role === 'admin'}
-                              onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as 'admin' | 'teacher' | 'student' }))}
-                              className="sr-only"
-                            />
-                            <div className={`w-4 h-4 rounded-full border-2 mr-3 flex items-center justify-center ${
-                              formData.role === 'admin' ? 'border-blue-500' : 'border-gray-300'
-                            }`}>
-                              {formData.role === 'admin' && (
-                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              )}
-                            </div>
-                            <div>
-                              <div className="font-medium text-gray-900">Admin</div>
-                              <div className="text-sm text-gray-600">{roleDescriptions.admin}</div>
-                            </div>
-                          </label>
-                        </motion.div>
-                      </div>
-
                     </div>
+                    
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 rounded-md p-3">
+                      <p className="text-sm text-red-600">{error}</p>
+                    </div>
+                  )}
                     
                     <Button 
                       type="submit" 
-                      disabled={loading}
-                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg transition-all duration-300 hover:scale-[1.02]"
-                    >
-                      {loading ? 'Creating Account...' : 'Create Account'}
-                    </Button>
-                  </motion.form>
-                </TabsContent>
-
-                <TabsContent value="invitation" className="space-y-6">
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-6">
-                    <div className="flex items-center mb-2">
-                      <School className="h-5 w-5 text-emerald-600 mr-2" />
-                      <h3 className="font-semibold text-emerald-800">Student Signup</h3>
-                    </div>
-                    <p className="text-sm text-emerald-700">
-                      You need an invitation code from your school administrator to create a student account. 
-                      Check your email for the invitation or contact your school.
-                    </p>
-                    <p className="text-xs text-emerald-600 mt-2">
-                      <strong>Teachers:</strong> If you received an invitation link via email, click that link to complete your profile setup.
-                    </p>
-                  </div>
-                  
-                  <motion.form 
-                    onSubmit={handleInvitationSignup} 
-                    className="space-y-6"
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
+                    disabled={loading}
+                    className="w-full bg-purple-600 hover:bg-purple-700"
                   >
-                    {invitationError && (
-                      <motion.div 
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg"
-                      >
-                        {invitationError}
-                      </motion.div>
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Creating School...
+                      </>
+                    ) : (
+                      <>
+                        Create School Account
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
                     )}
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="invitationCode" className="text-sm font-medium text-gray-700">Invitation Code</Label>
-                      <Input
-                        id="invitationCode"
-                        type="text"
-                        value={invitationFormData.invitationCode}
-                        onChange={(e) => handleInvitationCodeChange(e.target.value)}
-                        placeholder="Enter your invitation code"
-                        className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                        required
-                      />
-                      {validatingInvitation && (
-                        <p className="text-sm text-gray-500">Validating invitation code...</p>
-                      )}
-                    </div>
-
-                    <AnimatePresence>
-                      {invitation && (
-                        <motion.div 
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="bg-emerald-50 border border-emerald-200 rounded-lg p-4"
-                        >
-                          <div className="flex items-center mb-3">
-                            <CheckCircle className="h-5 w-5 text-emerald-600 mr-2" />
-                            <span className="font-medium text-emerald-800">Valid Invitation</span>
-                          </div>
-                          <div className="space-y-2 text-sm text-emerald-700">
-                            <p><strong>School:</strong> {invitation.school?.name || 'Unknown School'}</p>
-                            <p><strong>Invited by:</strong> {invitation.invited_by_profile?.full_name || 'School Administrator'}</p>
-                            <p><strong>Email:</strong> {invitation.email}</p>
-                            {invitation.message && <p><strong>Message:</strong> {invitation.message}</p>}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="invitationFullName" className="text-sm font-medium text-gray-700">Full Name</Label>
-                        <Input
-                          id="invitationFullName"
-                          type="text"
-                          value={invitationFormData.fullName}
-                          onChange={(e) => setInvitationFormData(prev => ({ ...prev, fullName: e.target.value }))}
-                          placeholder="Enter your full name"
-                          className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="invitationEmail" className="text-sm font-medium text-gray-700">Email</Label>
-                        <Input
-                          id="invitationEmail"
-                          type="email"
-                          value={invitationFormData.email}
-                          onChange={(e) => setInvitationFormData(prev => ({ ...prev, email: e.target.value }))}
-                          placeholder="Enter your email"
-                          className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                          required
-                          disabled={!!invitation}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Label htmlFor="invitationPassword" className="text-sm font-medium text-gray-700">Password</Label>
-                      <Input
-                        id="invitationPassword"
-                        type="password"
-                        value={invitationFormData.password}
-                        onChange={(e) => setInvitationFormData(prev => ({ ...prev, password: e.target.value }))}
-                        placeholder="Create a strong password"
-                        className="border-gray-200 focus:border-emerald-500 focus:ring-emerald-500"
-                        required
-                      />
-                    </div>
-                    
-                    <Button 
-                      type="submit" 
-                      disabled={loading || !invitation}
-                      className="w-full bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white font-semibold py-3 rounded-lg transition-all duration-300 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {loading ? 'Creating Account...' : 'Accept Invitation & Sign Up'}
                     </Button>
-                  </motion.form>
-                </TabsContent>
-              </Tabs>
-              
-              <div className="mt-8 text-center">
-                <p className="text-sm text-gray-600 mb-4">
-                  Already have an account?
-                </p>
-                <Link 
-                  href="/login" 
-                  className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-200 group"
-                >
-                  <span>Sign in to your account</span>
-                  <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform duration-200" />
-                </Link>
-              </div>
+                </form>
             </CardContent>
           </Card>
         </motion.div>
-      </div>
 
-      {/* Right Side - Benefits & Branding */}
-      <div className="hidden lg:flex flex-1 bg-gradient-to-br from-emerald-600 via-blue-600 to-purple-700 relative overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-30">
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent"></div>
-          <div className="absolute inset-0" style={{
-            backgroundImage: `radial-gradient(circle at 25% 25%, white 2px, transparent 2px),
-                             radial-gradient(circle at 75% 75%, white 2px, transparent 2px)`,
-            backgroundSize: '60px 60px',
-            backgroundPosition: '0 0, 30px 30px'
-          }}></div>
-        </div>
-        
-        {/* Floating Elements */}
-        <div className="absolute top-20 left-20">
+          {/* Benefits Section */}
           <motion.div
-            animate={{ 
-              y: [0, -20, 0],
-              rotate: [0, 5, 0]
-            }}
-            transition={{ 
-              duration: 6,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-            className="w-20 h-20 bg-white/10 rounded-2xl backdrop-blur-sm border border-white/20 flex items-center justify-center"
-          >
-            <Users className="h-10 w-10 text-white" />
-          </motion.div>
-        </div>
-        
-        <div className="absolute top-40 right-32">
-          <motion.div
-            animate={{ 
-              y: [0, 20, 0],
-              rotate: [0, -5, 0]
-            }}
-            transition={{ 
-              duration: 8,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 2
-            }}
-            className="w-16 h-16 bg-white/10 rounded-full backdrop-blur-sm border border-white/20 flex items-center justify-center"
-          >
-            <BookOpen className="h-8 w-8 text-white" />
-          </motion.div>
-        </div>
-
-        <div className="absolute bottom-32 left-32">
-          <motion.div
-            animate={{ 
-              y: [0, -15, 0],
-              rotate: [0, 3, 0]
-            }}
-            transition={{ 
-              duration: 7,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 4
-            }}
-            className="w-18 h-18 bg-white/10 rounded-xl backdrop-blur-sm border border-white/20 flex items-center justify-center"
-          >
-            <Award className="h-9 w-9 text-white" />
-          </motion.div>
-        </div>
-
-        {/* Main Content */}
-        <div className="relative z-10 flex flex-col justify-center p-12 text-white">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, delay: 0.3 }}
+            className="space-y-8"
           >
-            <div className="flex items-center mb-8">
-              <div className="h-12 w-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center mr-4">
-                <GraduationCap className="h-6 w-6 text-white" />
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                What You'll Get
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Everything you need to manage your educational institution
+              </p>
+        </div>
+        
+            <div className="space-y-6">
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mr-4">
+                  <Users className="h-6 w-6 text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">User Management</h3>
+                  <p className="text-sm text-gray-600">
+                    Invite teachers and manage student enrollments with ease.
+                  </p>
+                </div>
+        </div>
+
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mr-4">
+                  <BookOpen className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Course Management</h3>
+                  <p className="text-sm text-gray-600">
+                    Create and organize courses, lessons, and assignments.
+                  </p>
+                </div>
+        </div>
+
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mr-4">
+                  <Shield className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1">Secure Platform</h3>
+                  <p className="text-sm text-gray-600">
+                    Enterprise-grade security with data encryption and access controls.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start">
+                <div className="flex-shrink-0 w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mr-4">
+                  <Zap className="h-6 w-6 text-orange-600" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Riven</h1>
-                <p className="text-blue-100 text-sm">Learning Management System</p>
+                  <h3 className="font-semibold text-gray-900 mb-1">Real-time Collaboration</h3>
+                  <p className="text-sm text-gray-600">
+                    Interactive tools for teachers and students to collaborate effectively.
+                  </p>
+                </div>
               </div>
             </div>
 
-            <h2 className="text-4xl font-bold mb-6 leading-tight">
-              Begin Your Journey in 
-              <span className="block text-yellow-300 flex items-center">
-                Modern Education
-                <Sparkles className="h-8 w-8 ml-2" />
-              </span>
-            </h2>
-            
-            <p className="text-xl text-blue-100 mb-12 leading-relaxed">
-              Join thousands of educators and students who are transforming 
-              the way they teach and learn with our innovative platform.
-            </p>
-
-            <div className="space-y-6">
-              {benefits.map((benefit, index) => {
-                const Icon = benefit.icon
-                return (
-                  <motion.div
-                    key={benefit.title}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.5, delay: 0.5 + index * 0.1 }}
-                    className="flex items-center space-x-4 p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 hover:bg-white/15 transition-all duration-300"
-                  >
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                        <Icon className="h-6 w-6 text-white" />
+            {/* Features Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-2">Analytics</h4>
+                <p className="text-sm text-gray-600">
+                  Track student progress and engagement
+                </p>
+              </div>
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-2">Communication</h4>
+                <p className="text-sm text-gray-600">
+                  Built-in messaging and announcements
+                </p>
                       </div>
+              <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-2">Assessment</h4>
+                <p className="text-sm text-gray-600">
+                  Create quizzes and track grades
+                </p>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-lg">{benefit.title}</h3>
-                      <p className="text-blue-100 text-sm">{benefit.description}</p>
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-2">Support</h4>
+                <p className="text-sm text-gray-600">
+                  24/7 support for your school
+                </p>
                     </div>
-                  </motion.div>
-                )
-              })}
             </div>
           </motion.div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="bg-gray-900 text-white py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center">
+            <div className="flex items-center justify-center mb-4">
+              <div className="h-8 w-8 mr-3">
+                <Image 
+                  src="/r-logo.svg" 
+                  alt="Riven Logo" 
+                  width={32} 
+                  height={32}
+                  className="h-8 w-8"
+                />
+              </div>
+              <h3 className="text-2xl font-bold">Riven</h3>
+            </div>
+            <p className="text-gray-400 mb-4">
+              Empowering educational institutions with modern learning tools.
+            </p>
+            <div className="flex justify-center space-x-6">
+              <Link href="/teachers" className="text-gray-400 hover:text-white">
+                Join as Teacher
+              </Link>
+              <Link href="/students" className="text-gray-400 hover:text-white">
+                Join as Student
+              </Link>
+              <Link href="/login" className="text-gray-400 hover:text-white">
+                Sign In
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>

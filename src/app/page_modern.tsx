@@ -43,7 +43,7 @@ import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 const fadeInUp = {
   initial: { opacity: 0, y: 60 },
   animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.6, ease: [0.25, 0.46, 0.45, 0.94] }
+  transition: { duration: 0.6, ease: "easeOut" }
 }
 
 const staggerContainer = {
@@ -56,40 +56,25 @@ const staggerContainer = {
 
 const cardVariants = {
   initial: { opacity: 0, y: 50, scale: 0.9 },
-  animate: { 
+  animate: {
     opacity: 1, 
     y: 0, 
-    scale: 1,
-    transition: {
-      duration: 0.6,
-      ease: [0.25, 0.46, 0.45, 0.94]
-    }
+    scale: 1
   },
   hover: {
     y: -10,
     scale: 1.03,
-    boxShadow: "0 20px 40px rgba(0,0,0,0.1)",
-    transition: {
-      duration: 0.3,
-      ease: "easeOut"
-    }
+    boxShadow: "0 20px 40px rgba(0,0,0,0.1)"
   }
 }
 
 const buttonVariants = {
   initial: { scale: 1 },
   hover: { 
-    scale: 1.05,
-    transition: {
-      duration: 0.2,
-      ease: "easeOut"
-    }
+    scale: 1.05
   },
   tap: { 
-    scale: 0.95,
-    transition: {
-      duration: 0.1
-    }
+    scale: 0.95
   }
 }
 

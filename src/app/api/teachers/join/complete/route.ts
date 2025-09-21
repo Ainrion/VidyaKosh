@@ -93,13 +93,41 @@ export async function POST(request: NextRequest) {
       invitation_id: invitation.id
     }
 
-    const { data: profile, error: profileError } = await supabase
+    // Try to insert the profile, but if it fails due to conflict (trigger created it), update it instead
+        const { data: profile, error: profileError } = await supabase
       .from('profiles')
       .insert(profileData)
       .select()
       .single()
 
-    if (profileError) {
+    let finalProfile = profile
+
+    if (profileError && profileError.code === '23505') {
+      // Profile already exists (created by trigger), update it with correct data
+      console.log('Profile exists, updating with teacher data')
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          school_id: invitation.school_id,
+          full_name: fullName,
+          role: 'teacher',
+          school_access_granted: true,
+          school_access_granted_at: new Date().toISOString(),
+          invitation_id: invitation.id
+        })
+        .eq('id', authData.user.id)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Profile update error:', updateError)
+        return NextResponse.json({ 
+          error: 'Failed to update user profile' 
+        }, { status: 500 })
+      }
+      
+      finalProfile = updatedProfile
+    } else if (profileError) {
       console.error('Profile creation error:', profileError)
       return NextResponse.json({ 
         error: 'Failed to create user profile' 
@@ -127,11 +155,31 @@ export async function POST(request: NextRequest) {
       schoolId: invitation.school_id
     })
 
+    // Sign in the user immediately after account creation
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    })
+
+    if (signInError) {
+      console.error('Auto sign-in error:', signInError)
+      // Still return success, user can sign in manually
+      return NextResponse.json({ 
+        success: true, 
+        user: authData.user,
+        profile: finalProfile,
+        message: 'Teacher account created successfully. Please sign in to continue.',
+        requiresManualSignIn: true
+      })
+    }
+
     return NextResponse.json({ 
       success: true, 
-      user: authData.user,
-      profile: profile,
-      message: 'Teacher account created successfully' 
+      user: signInData.user,
+      profile: finalProfile,
+      session: signInData.session,
+      message: 'Teacher account created and signed in successfully',
+      redirectTo: '/dashboard'
     })
   } catch (error) {
     console.error('Error in teacher join completion:', error)

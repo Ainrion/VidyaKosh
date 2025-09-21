@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/hooks/useAuth'
 import { createClient } from '@/lib/supabase/client'
-import { GraduationCap } from 'lucide-react'
+import Image from 'next/image'
 import { toastMessages } from '@/lib/toast'
 
 interface Student {
@@ -518,7 +518,15 @@ export default function EnrollmentManagement() {
               {filteredEnrollments.length === 0 ? (
                 <div key="no-enrollments" className="text-center py-8">
                   <div className="text-gray-500 mb-4">
-                    <GraduationCap className="h-12 w-12 mx-auto mb-2" />
+                    <div className="h-12 w-12 mx-auto mb-2">
+                      <Image 
+                        src="/r-logo.svg" 
+                        alt="Riven Logo" 
+                        width={48} 
+                        height={48}
+                        className="h-12 w-12"
+                      />
+                    </div>
                     <h3 className="text-lg font-medium">No Enrollments Found</h3>
                     <p className="text-sm">
                       {enrollments.length === 0 

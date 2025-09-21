@@ -369,7 +369,7 @@ export async function sendEmailWithSendGrid(options: EmailOptions): Promise<bool
           to: [{ email: options.to }],
           subject: options.subject,
         }],
-        from: { email: options.from || 'noreply@vidyakosh.com', name: 'Vidyakosh' },
+        from: { email: options.from || 'noreply@riven.com', name: 'Riven' },
         content: [
           { type: 'text/plain', value: options.text || '' },
           { type: 'text/html', value: options.html },
@@ -464,23 +464,53 @@ export async function sendEmailWithNodemailer(options: EmailOptions): Promise<bo
 
 // Main email sending function
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
-  console.log('Attempting to send email to:', options.to)
+  console.log('📧 Attempting to send email to:', options.to)
+  console.log('📧 Email options:', {
+    to: options.to,
+    subject: options.subject,
+    hasHtml: !!options.html,
+    hasText: !!options.text,
+    from: options.from
+  })
   
   // Try Nodemailer (primary email provider)
   if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    console.log('Sending email with Nodemailer (SMTP)...')
-    const success = await sendEmailWithNodemailer(options)
-    if (success) return true
+    console.log('📧 Sending email with Nodemailer (SMTP)...')
+    try {
+      const success = await sendEmailWithNodemailer(options)
+      if (success) {
+        console.log('✅ Email sent successfully with Nodemailer')
+        return true
+      } else {
+        console.warn('❌ Nodemailer failed, trying fallback...')
+      }
+    } catch (error) {
+      console.error('❌ Nodemailer error:', error)
+      console.warn('❌ Nodemailer failed, trying fallback...')
+    }
+  } else {
+    console.warn('⚠️ SMTP configuration missing, skipping Nodemailer')
   }
 
   // Fallback to SendGrid (optional)
   if (process.env.SENDGRID_API_KEY) {
-    console.log('Trying SendGrid fallback...')
-    const success = await sendEmailWithSendGrid(options)
-    if (success) return true
+    console.log('📧 Trying SendGrid fallback...')
+    try {
+      const success = await sendEmailWithSendGrid(options)
+      if (success) {
+        console.log('✅ Email sent successfully with SendGrid')
+        return true
+      } else {
+        console.warn('❌ SendGrid also failed')
+      }
+    } catch (error) {
+      console.error('❌ SendGrid error:', error)
+    }
+  } else {
+    console.warn('⚠️ SendGrid API key missing, skipping SendGrid')
   }
 
-  console.error('Email sending failed. Please configure SMTP settings in your .env.local file.')
+  console.error('❌ All email providers failed. Please check your email configuration.')
   return false
 }
 

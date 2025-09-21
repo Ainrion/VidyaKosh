@@ -43,8 +43,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('Profile not found, user needs to complete setup')
           setProfile(null)
           setProfileLoading(false)
-          // Only redirect if not already on setup page
-          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/setup')) {
+          // Only redirect if not already on setup page or join page
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/setup') && !window.location.pathname.startsWith('/join')) {
             router.push('/setup')
           }
           return 'setup_needed'
@@ -53,8 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.log('Profile access denied, likely RLS policy issue or user needs setup')
           setProfile(null)
           setProfileLoading(false)
-          // Only redirect if not already on setup page
-          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/setup')) {
+          // Only redirect if not already on setup page or join page
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/setup') && !window.location.pathname.startsWith('/join')) {
             router.push('/setup')
           }
           return 'setup_needed'
@@ -75,8 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('Treating 406 error as setup needed')
         setProfile(null)
         setProfileLoading(false)
-        // Only redirect if not already on setup page
-        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/setup')) {
+        // Only redirect if not already on setup page or join page
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/setup') && !window.location.pathname.startsWith('/join')) {
           router.push('/setup')
         }
         return 'setup_needed'

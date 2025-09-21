@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Test invitation creation step by step
-    const testResults = {
+    const testResults: any = {
       user: {
         id: user.id,
         role: profile.role,

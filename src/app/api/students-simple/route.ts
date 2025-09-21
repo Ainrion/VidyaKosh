@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
     }
 
     // Try to get students with a simple query
-    let students = []
-    let error = null
+    let students: any[] = []
+    let error: any = null
 
     try {
       // Simple query - get students from the same school

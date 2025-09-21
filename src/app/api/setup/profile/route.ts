@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
       if (createError.code === '42501' || createError.code === '42P17' || createError.message?.includes('permission') || createError.message?.includes('infinite recursion')) {
         try {
           // Use bypass RLS API as fallback
-          const bypassResponse = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/setup/profile/bypass-rls`, {
+          const bypassResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/setup/profile/bypass-rls`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({

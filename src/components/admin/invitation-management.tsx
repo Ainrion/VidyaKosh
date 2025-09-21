@@ -114,9 +114,21 @@ export default function InvitationManagement() {
         toastMessages.invitations.sent(newInvitation.email)
       } else {
         console.error('Email sending failed:', data.emailError)
-        toastMessages.invitations.sendError(
-          data.emailError || 'Email could not be sent. Please check your email configuration.'
-        )
+        console.error('Full API response:', data)
+        
+        // Provide more specific error messages
+        let errorMessage = 'Email could not be sent. Please check your email configuration.'
+        if (data.emailError) {
+          if (data.emailError.includes('SMTP')) {
+            errorMessage = 'SMTP connection failed. Please check your email server settings.'
+          } else if (data.emailError.includes('authentication')) {
+            errorMessage = 'Email authentication failed. Please check your email credentials.'
+          } else {
+            errorMessage = data.emailError
+          }
+        }
+        
+        toastMessages.invitations.sendError(errorMessage)
       }
 
       setNewInvitation({ email: '', message: '', expiresInDays: 7 })

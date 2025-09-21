@@ -208,38 +208,7 @@ export default function AssignmentDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Attachments */}
-        {assignment.attachment_url && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Assignment Files</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="p-4 bg-gray-50 rounded-lg border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Paperclip className="h-5 w-5 text-gray-500" />
-                    <div>
-                      <p className="font-medium text-gray-700">
-                        {assignment.attachment_name || 'Assignment File'}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {assignment.attachment_size ? `${(assignment.attachment_size / 1024 / 1024).toFixed(1)} MB` : 'Unknown size'}
-                      </p>
-                    </div>
-                  </div>
-                  <Button 
-                    onClick={() => window.open(assignment.attachment_url, '_blank')}
-                    className="flex items-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+        {/* Attachments - Currently not supported in assignments table */}
 
         {/* Submission Status */}
         {assignment.submission && (
@@ -286,4 +255,5 @@ export default function AssignmentDetailPage() {
     </div>
   )
 }
+
 

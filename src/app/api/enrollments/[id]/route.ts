@@ -4,13 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 // PATCH /api/enrollments/[id] - Update enrollment status
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
     const body = await request.json()
     const { status, notes, approvedBy } = body
-    const enrollmentId = params.id
+    const { id: enrollmentId } = await params
 
     if (!status) {
       return NextResponse.json({ error: 'Status is required' }, { status: 400 })
@@ -108,11 +108,11 @@ export async function PATCH(
 // DELETE /api/enrollments/[id] - Delete enrollment
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
-    const enrollmentId = params.id
+    const { id: enrollmentId } = await params
 
     // Get current user profile
     const { data: { user }, error: authError } = await supabase.auth.getUser()

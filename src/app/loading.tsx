@@ -1,7 +1,6 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { GraduationCap } from 'lucide-react'
 
 export default function Loading() {
   return (
@@ -26,7 +25,7 @@ export default function Loading() {
               }}
               className="w-20 h-20 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl"
             >
-              <GraduationCap className="h-10 w-10 text-white" />
+              <div className="text-white font-bold text-3xl">R</div>
             </motion.div>
             
             {/* Orbiting dots */}
@@ -62,7 +61,7 @@ export default function Loading() {
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            Loading Vidyakosh
+            Loading Riven
           </h2>
           <p className="text-gray-600">
             Preparing your learning experience...

@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Send, Wifi, WifiOff, Users, AlertCircle, Crown, GraduationCap, BookOpen, ChevronDown, Hash, Lock, MoreHorizontal, Phone, Video, UserPlus, MessageSquare } from 'lucide-react'
+import { Send, Wifi, WifiOff, Users, AlertCircle, Crown, BookOpen, ChevronDown, Hash, Lock, MoreHorizontal, Phone, Video, UserPlus, MessageSquare } from 'lucide-react'
+import Image from 'next/image'
 import { formatDistanceToNow } from 'date-fns'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -46,7 +47,7 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const scrollAreaRef = useRef<HTMLDivElement>(null)
-  const typingTimeoutRef = useRef<NodeJS.Timeout>()
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Auto-scroll to bottom when new messages arrive
   const scrollToBottom = useCallback(() => {
@@ -161,7 +162,7 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
       case 'admin':
         return { symbol: 'A', icon: Crown, color: 'text-red-500 bg-red-100', label: 'Admin' }
       case 'teacher':
-        return { symbol: 'T', icon: GraduationCap, color: 'text-blue-500 bg-blue-100', label: 'Teacher' }
+        return { symbol: 'T', icon: BookOpen, color: 'text-blue-500 bg-blue-100', label: 'Teacher' }
       case 'student':
         return { symbol: 'S', icon: BookOpen, color: 'text-green-500 bg-green-100', label: 'Student' }
       default:
@@ -453,7 +454,15 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
                 <span className="font-medium">Admin</span>
               </div>
               <div className="flex items-center gap-2">
-                <GraduationCap className="h-4 w-4 text-blue-500" />
+                <div className="h-4 w-4">
+                  <Image 
+                    src="/r-logo.svg" 
+                    alt="Riven Logo" 
+                    width={16} 
+                    height={16}
+                    className="h-4 w-4"
+                  />
+                </div>
                 <span className="font-medium">Teacher</span>
               </div>
               <div className="flex items-center gap-2">

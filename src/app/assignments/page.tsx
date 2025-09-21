@@ -97,7 +97,7 @@ export default function AssignmentsPage() {
 
       const assignmentsWithSubmissions = data?.map(assignment => ({
         ...assignment,
-        submission: assignment.assignment_submissions?.find(sub => sub.student_id === profile.id)
+        submission: assignment.assignment_submissions?.find((sub: any) => sub.student_id === profile.id)
       })) || []
 
       console.log(`Fetched ${assignmentsWithSubmissions.length} assignments for ${profile.role}`)
@@ -220,27 +220,7 @@ export default function AssignmentsPage() {
                       {assignment.description || 'No description provided'}
                     </p>
                     
-                    {assignment.attachment_url && (
-                      <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
-                        <div className="flex items-center gap-2">
-                          <Paperclip className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm font-medium text-gray-700">
-                            {assignment.attachment_name || 'Assignment File'}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            ({assignment.attachment_size ? `${(assignment.attachment_size / 1024 / 1024).toFixed(1)} MB` : 'Unknown size'})
-                          </span>
-                        </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="mt-2"
-                          onClick={() => window.open(assignment.attachment_url, '_blank')}
-                        >
-                          Download File
-                        </Button>
-                      </div>
-                    )}
+                    {/* Attachments - Currently not supported in assignments table */}
                     
                     <div className="flex items-center justify-between text-sm text-gray-500 mb-4">
                       {assignment.due_date && (

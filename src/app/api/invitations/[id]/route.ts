@@ -4,13 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 // PATCH /api/invitations/[id] - Update invitation status
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
     const body = await request.json()
     const { status, message } = body
-    const invitationId = params.id
+    const { id: invitationId } = await params
 
     if (!status) {
       return NextResponse.json({ error: 'Status is required' }, { status: 400 })
@@ -72,11 +72,11 @@ export async function PATCH(
 // DELETE /api/invitations/[id] - Cancel invitation
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
-    const invitationId = params.id
+    const { id: invitationId } = await params
 
     // Get current user profile
     const { data: { user }, error: authError } = await supabase.auth.getUser()

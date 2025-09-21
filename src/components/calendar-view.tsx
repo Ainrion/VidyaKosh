@@ -80,14 +80,23 @@ export function CalendarView({
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<View>(defaultView)
   const [date, setDate] = useState(new Date())
-  const [newEvent, setNewEvent] = useState({
+  const [newEvent, setNewEvent] = useState<{
+    title: string
+    description: string
+    start: Date
+    end: Date
+    allDay: boolean
+    location: string
+    eventType: keyof typeof EVENT_TYPE_COLORS
+    color: typeof EVENT_TYPE_COLORS[keyof typeof EVENT_TYPE_COLORS]
+  }>({
     title: '',
     description: '',
     start: new Date(),
     end: new Date(),
     allDay: false,
     location: '',
-    eventType: 'other' as keyof typeof EVENT_TYPE_COLORS,
+    eventType: 'other',
     color: EVENT_TYPE_COLORS.other
   })
 
@@ -217,7 +226,7 @@ export function CalendarView({
         allDay: false,
         location: '',
         eventType: 'other',
-        color: '#3b82f6'
+        color: '#6b7280'
       })
       setShowCreateDialog(false)
       
@@ -580,7 +589,7 @@ export function CalendarView({
                   setNewEvent(prev => ({ 
                     ...prev, 
                     eventType,
-                    color: EVENT_TYPE_COLORS[eventType] || '#3b82f6'
+                     color: EVENT_TYPE_COLORS[eventType] || '#6b7280'
                   }))
                 }}
                 className="w-full p-2 border rounded-md"
@@ -859,7 +868,7 @@ export function CalendarView({
                             ? 'border-blue-600 bg-blue-50' 
                             : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                         }`}
-                        onClick={() => setNewEvent(prev => ({ ...prev, color }))}
+                        onClick={() => setNewEvent(prev => ({ ...prev, color: color as typeof EVENT_TYPE_COLORS[keyof typeof EVENT_TYPE_COLORS] }))}
                       >
                         <div className="flex items-center gap-2 mb-1">
                           <div 
@@ -882,7 +891,7 @@ export function CalendarView({
                       id="color"
                       type="color"
                       value={newEvent.color}
-                      onChange={(e) => setNewEvent(prev => ({ ...prev, color: e.target.value }))}
+                      onChange={(e) => setNewEvent(prev => ({ ...prev, color: e.target.value as typeof EVENT_TYPE_COLORS[keyof typeof EVENT_TYPE_COLORS] }))}
                       className="w-16 h-8"
                     />
                     <span className="text-sm text-muted-foreground">Hex: {newEvent.color}</span>

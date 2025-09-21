@@ -94,6 +94,53 @@ const server = createServer((req, res) => {
       }
     })
 
+    // Handle blackboard collaboration
+    socket.on('join-blackboard', (data) => {
+      const { blackboardId, userId, userName } = data
+      socket.join(`blackboard-${blackboardId}`)
+      console.log(`👤 User ${userName} joined blackboard ${blackboardId}`)
+      
+      // Notify others in the blackboard
+      socket.to(`blackboard-${blackboardId}`).emit('collaborator-joined', {
+        userId,
+        userName
+      })
+    })
+
+    socket.on('leave-blackboard', (data) => {
+      const { blackboardId, userId, userName } = data
+      socket.leave(`blackboard-${blackboardId}`)
+      console.log(`👤 User ${userName} left blackboard ${blackboardId}`)
+      
+      // Notify others in the blackboard
+      socket.to(`blackboard-${blackboardId}`).emit('collaborator-left', {
+        userId,
+        userName
+      })
+    })
+
+    socket.on('blackboard-drawing', (data) => {
+      const { blackboardId, elements, userId, userName } = data
+      console.log(`🎨 User ${userName} drawing on blackboard ${blackboardId}`)
+      
+      // Broadcast to all other users in the blackboard
+      socket.to(`blackboard-${blackboardId}`).emit('blackboard-drawing', {
+        elements,
+        userId,
+        userName
+      })
+    })
+
+    socket.on('blackboard-updated', (data) => {
+      const { blackboardId, elements } = data
+      console.log(`💾 Blackboard ${blackboardId} updated`)
+      
+      // Broadcast to all users in the blackboard
+      socket.to(`blackboard-${blackboardId}`).emit('blackboard-updated', {
+        elements
+      })
+    })
+
     // Handle new messages
     socket.on('send-message', async (data) => {
       try {

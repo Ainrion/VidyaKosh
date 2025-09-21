@@ -1,0 +1,13 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="rGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#4F9EFF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2563EB;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- R Logo - Exact match to provided image -->
+  <!-- Main R shape with thick rounded lines -->
+  <path d="M8 4h10c3.5 0 6.5 3 6.5 6.5v0c0 2.5-1.5 4.5-3.5 5.5l5 8h-4l-4.5-7.5h-2v7.5h-4V4zm4 4v7h6c1.5 0 2.5-1 2.5-2.5v0c0-1.5-1-2.5-2.5-2.5h-6z" 
+        fill="url(#rGradient)"/>
+</svg>

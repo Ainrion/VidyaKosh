@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
     const body = await request.json()
     const { name, address, phone, email, logo_url } = body
 
@@ -15,8 +14,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'School email is required' }, { status: 400 })
     }
 
-    // Check if school with same name or email already exists
-    const { data: existingSchools, error: checkError } = await supabase
+    // Check if school with same name or email already exists using service role
+    const serviceSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    
+    const { data: existingSchools, error: checkError } = await serviceSupabase
       .from('schools')
       .select('id, name, email')
       .or(`name.ilike.${name},email.ilike.${email}`)
@@ -26,18 +30,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to validate school data' }, { status: 500 })
     }
 
+    console.log('Existing schools check:', { name, email, existingSchools })
+
     if (existingSchools && existingSchools.length > 0) {
       const existingSchool = existingSchools[0]
+      console.log('Found existing school:', existingSchool)
+      
       if (existingSchool.name.toLowerCase() === name.toLowerCase()) {
-        return NextResponse.json({ error: 'A school with this name already exists' }, { status: 400 })
+        console.log('School name conflict detected')
+        return NextResponse.json({ 
+          error: 'A school with this name already exists',
+          details: `A school named "${existingSchool.name}" already exists in the system. Please choose a different name.`
+        }, { status: 400 })
       }
       if (existingSchool.email.toLowerCase() === email.toLowerCase()) {
-        return NextResponse.json({ error: 'A school with this email already exists' }, { status: 400 })
+        console.log('School email conflict detected')
+        return NextResponse.json({ 
+          error: 'A school with this email already exists',
+          details: `A school with email "${existingSchool.email}" already exists in the system. Please use a different email.`
+        }, { status: 400 })
       }
     }
 
     // Create the school using service role client to bypass RLS
-    const { data: school, error: createError } = await supabase
+    console.log('Creating school with data:', { name, address, phone, email, logo_url })
+    
+    const { data: school, error: createError } = await serviceSupabase
       .from('schools')
       .insert({
         name,
@@ -51,9 +69,19 @@ export async function POST(request: NextRequest) {
 
     if (createError) {
       console.error('Error creating school:', createError)
-      return NextResponse.json({ error: 'Failed to create school' }, { status: 500 })
+      console.error('Error details:', {
+        message: createError.message,
+        details: createError.details,
+        hint: createError.hint,
+        code: createError.code
+      })
+      return NextResponse.json({ 
+        error: 'Failed to create school',
+        details: createError.message 
+      }, { status: 500 })
     }
 
+    console.log('School created successfully:', school)
     return NextResponse.json({ 
       success: true,
       school,

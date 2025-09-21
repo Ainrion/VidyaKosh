@@ -62,7 +62,7 @@ export default function Home() {
             Modern Learning Management System
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            Vidyakosh is a comprehensive LMS designed for schools to manage courses, 
+            Riven is a comprehensive LMS designed for schools to manage courses, 
             students, teachers, and enhance the learning experience with modern tools.
           </p>
           <div className="space-x-4">

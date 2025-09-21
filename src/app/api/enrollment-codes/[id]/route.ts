@@ -4,13 +4,13 @@ import { createClient } from '@/lib/supabase/server'
 // PATCH /api/enrollment-codes/[id] - Update enrollment code
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
     const body = await request.json()
     const { title, description, isActive, expiresInDays, maxUses } = body
-    const codeId = params.id
+    const { id: codeId } = await params
 
     // Get current user profile
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -99,11 +99,11 @@ export async function PATCH(
 // DELETE /api/enrollment-codes/[id] - Delete enrollment code
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const supabase = await createClient()
-    const codeId = params.id
+    const { id: codeId } = await params
 
     // Get current user profile
     const { data: { user }, error: authError } = await supabase.auth.getUser()

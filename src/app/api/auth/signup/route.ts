@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createServiceClient } from '@supabase/supabase-js'
 
 export async function POST(request: NextRequest) {
   try {
     const supabase = await createClient()
     const body = await request.json()
-    let { email, password, fullName, role, schoolId, schoolName, invitationCode } = body
+    const { email, password, fullName, role, schoolName, invitationCode } = body
+    let { schoolId } = body
 
     console.log('Signup request received:', { 
       email, 
@@ -269,22 +271,59 @@ export async function POST(request: NextRequest) {
       profileData.invitation_id = invitation.id
     }
 
-    const { data: profile, error: profileError } = await supabase
+    // Use service role client for profile operations to bypass RLS
+    const serviceSupabase = createServiceClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // Try to insert the profile, but if it fails due to conflict (trigger created it), update it instead
+    const { data: profile, error: profileError } = await serviceSupabase
       .from('profiles')
       .insert(profileData)
       .select()
       .single()
 
-    if (profileError) {
+    let finalProfile = profile
+
+    if (profileError && profileError.code === '23505') {
+      // Profile already exists (created by trigger), update it with correct data
+      console.log('Profile exists, updating with correct data')
+      const { data: updatedProfile, error: updateError } = await serviceSupabase
+        .from('profiles')
+        .update({
+          school_id: schoolIdToUse,
+          full_name: fullName,
+          role: role,
+          email: email
+        })
+        .eq('id', authData.user.id)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('Profile update error:', updateError)
+        return NextResponse.json({ 
+          error: 'Failed to update user profile',
+          details: updateError.message
+        }, { status: 500 })
+      }
+      
+      finalProfile = updatedProfile
+      console.log('Profile updated successfully:', finalProfile)
+    } else if (profileError) {
       console.error('Profile creation error:', profileError)
       return NextResponse.json({ 
-        error: 'Failed to create user profile' 
+        error: 'Failed to create user profile',
+        details: profileError.message
       }, { status: 500 })
+    } else {
+      console.log('Profile created successfully:', finalProfile)
     }
 
     // If student or teacher signed up with invitation, update invitation status
     if ((role === 'student' || role === 'teacher') && invitationCode && invitation) {
-      const { error: updateInvitationError } = await supabase
+      const { error: updateInvitationError } = await serviceSupabase
         .from('school_invitations')
         .update({
           status: 'accepted',
@@ -299,10 +338,18 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log('Signup successful, returning response:', {
+      success: true,
+      userId: authData.user.id,
+      profileId: finalProfile?.id,
+      role: finalProfile?.role,
+      schoolId: finalProfile?.school_id
+    })
+
     return NextResponse.json({ 
       success: true, 
       user: authData.user,
-      profile: profile,
+      profile: finalProfile,
       message: 'User created successfully',
       emailConfirmationSent: !authData.user.email_confirmed_at,
       requiresEmailConfirmation: !authData.user.email_confirmed_at

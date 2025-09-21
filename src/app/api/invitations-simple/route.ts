@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
         total: 0,
         message: 'No invitations found or invitations table not set up',
         debug: {
-          error: error?.message || 'No error',
+          error: error instanceof Error ? error.message : 'No error',
           tableExists: !error,
           invitationsCount: invitations?.length || 0
         }
@@ -93,8 +93,8 @@ export async function GET(request: NextRequest) {
     const acceptedByIds = [...new Set(invitations.map(i => i.accepted_by).filter(Boolean))]
 
     // Fetch related profiles
-    let invitedByProfiles = []
-    let acceptedByProfiles = []
+    let invitedByProfiles: any[] = []
+    let acceptedByProfiles: any[] = []
 
     try {
       if (invitedByIds.length > 0) {
@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
         }, { status: 500 })
       }
 
-      const invitationUrl = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/signup?invite=${invitationCode}`
+      const invitationUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/signup?invite=${invitationCode}`
 
       return NextResponse.json({ 
         invitation,

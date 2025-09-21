@@ -103,7 +103,7 @@ export default function TeacherInvitationsPage() {
       })
 
       if (response.ok) {
-        const data = await response.json()
+        await response.json()
         toast.success(`Teacher invitation sent to ${newInvitation.email}`)
         setNewInvitation({ email: '', message: '', expiresInDays: 7 })
         setActiveTab('manage')

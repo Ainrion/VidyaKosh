@@ -197,7 +197,7 @@ export default function EnrollPage() {
     )
   }
 
-  if (!profile.school_access_granted) {
+  if (!profile.school_id) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Card className="w-full max-w-md">
@@ -343,7 +343,7 @@ export default function EnrollPage() {
 
               <Button
                 onClick={useCode}
-                disabled={loading || isExpired(enrollmentCode.expires_at) || (enrollmentCode.max_uses && enrollmentCode.current_uses >= enrollmentCode.max_uses)}
+                disabled={loading || isExpired(enrollmentCode.expires_at) || !!(enrollmentCode.max_uses && enrollmentCode.current_uses >= enrollmentCode.max_uses)}
                 className="w-full"
               >
                 {loading ? 'Joining...' : 'Join Course'}

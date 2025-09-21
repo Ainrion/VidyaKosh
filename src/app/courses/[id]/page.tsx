@@ -191,13 +191,7 @@ export default function CourseDetailsPage() {
         created_by: profile?.id
       }
 
-      // Only add attachment fields if file data exists
-      if (fileData) {
-        assignmentData.attachment_url = fileData.url
-        assignmentData.attachment_name = fileData.name
-        assignmentData.attachment_size = fileData.size
-        assignmentData.attachment_type = fileData.type
-      }
+      // Attachments are currently not supported in assignments table
 
       console.log('Creating assignment with data:', assignmentData)
 
@@ -228,14 +222,14 @@ export default function CourseDetailsPage() {
     } catch (error) {
       console.error('Error creating assignment:', error)
       console.error('Error details:', {
-        message: error?.message,
-        stack: error?.stack,
-        name: error?.name,
-        cause: error?.cause
+        message: (error as any)?.message,
+        stack: (error as any)?.stack,
+        name: (error as any)?.name,
+        cause: (error as any)?.cause
       })
       
       // Show user-friendly error message
-      alert(`Failed to create assignment: ${error?.message || 'Unknown error occurred'}`)
+      alert(`Failed to create assignment: ${(error as any)?.message || 'Unknown error occurred'}`)
       setIsUploadingFile(false)
     } finally {
       setIsCreating(false)
@@ -573,27 +567,7 @@ export default function CourseDetailsPage() {
                       <p className="text-gray-700 mb-4">
                         {assignment.description || 'No description provided.'}
                       </p>
-                      {assignment.attachment_url && (
-                        <div className="mb-4 p-3 bg-gray-50 rounded-lg border">
-                          <div className="flex items-center gap-2">
-                            <Paperclip className="h-4 w-4 text-gray-500" />
-                            <span className="text-sm font-medium text-gray-700">
-                              {assignment.attachment_name || 'Assignment File'}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              ({assignment.attachment_size ? `${(assignment.attachment_size / 1024 / 1024).toFixed(1)} MB` : 'Unknown size'})
-                            </span>
-                          </div>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            className="mt-2"
-                            onClick={() => window.open(assignment.attachment_url, '_blank')}
-                          >
-                            Download File
-                          </Button>
-                        </div>
-                      )}
+                      {/* Attachments are currently not supported in assignments table */}
                       <Button 
                         variant="outline" 
                         size="sm"
