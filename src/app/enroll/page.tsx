@@ -279,7 +279,7 @@ export default function EnrollPage() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-lg">{enrollmentCode.title}</CardTitle>
-                  <CardDescription>{enrollmentCode.course.title}</CardDescription>
+                  <CardDescription>{enrollmentCode.course?.title || 'Course not found'}</CardDescription>
                 </div>
                 <Badge variant="default" className="text-green-600">
                   <CheckCircle className="w-3 h-3 mr-1" />
@@ -295,7 +295,7 @@ export default function EnrollPage() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="font-medium">Course</p>
-                  <p className="text-gray-600">{enrollmentCode.course.title}</p>
+                  <p className="text-gray-600">{enrollmentCode.course?.title || 'Course not found'}</p>
                 </div>
                 <div>
                   <p className="font-medium">Created by</p>

@@ -90,9 +90,10 @@ export default function TeacherApplyPage() {
         throw new Error(data.error || 'Application submission failed')
       }
 
-      // Success - show toast and redirect
+      // Success - show toast and redirect to pending approval page
       toastMessages.auth.teacherApplicationSuccess()
-      router.push('/login?message=application-submitted')
+      const schoolName = schoolInfo?.name || 'the school'
+      router.push(`/teacher/pending-approval?email=${encodeURIComponent(formData.email)}&school=${encodeURIComponent(schoolName)}`)
     } catch (error: any) {
       console.error('Teacher application error:', error)
       setError(error.message || 'Failed to submit application. Please try again.')

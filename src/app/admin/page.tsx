@@ -23,11 +23,13 @@ import {
   BarChart3,
   Settings,
   UserPlus,
-  Mail
+  Mail,
+  Copy
 } from 'lucide-react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
+import { toast } from 'sonner'
 
 type School = Database['public']['Tables']['schools']['Row']
 
@@ -81,15 +83,22 @@ export default function AdminPage() {
     if (!profile?.school_id) return
 
     try {
-      // Fetch school information
-      const { data: schoolData, error: schoolError } = await supabase
-        .from('schools')
-        .select('*')
-        .eq('id', profile.school_id)
-        .single()
+      // Fetch school information using the API endpoint to ensure school_code is included
+      const response = await fetch('/api/schools/info')
+      if (response.ok) {
+        const data = await response.json()
+        setSchool(data.school)
+      } else {
+        // Fallback to direct Supabase query if API fails
+        const { data: schoolData, error: schoolError } = await supabase
+          .from('schools')
+          .select('*')
+          .eq('id', profile.school_id)
+          .single()
 
-      if (schoolError) throw schoolError
-      setSchool(schoolData)
+        if (schoolError) throw schoolError
+        setSchool(schoolData)
+      }
 
       // Fetch statistics
       const [
@@ -363,9 +372,34 @@ export default function AdminPage() {
                 <div>
                   <h3 className="font-semibold text-lg mb-2">{school.name}</h3>
                   
-                  <div className="space-y-2 text-sm text-gray-600">
+                  <div className="space-y-3 text-sm text-gray-600">
                     {school.school_code && (
-                      <p><strong>School Code:</strong> {school.school_code}</p>
+                      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-blue-900 mb-1">School Code</p>
+                            <p className="text-2xl font-bold text-blue-800 font-mono">{school.school_code}</p>
+                            <p className="text-xs text-blue-600 mt-1">Share this code with teachers</p>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-blue-600 text-blue-600 hover:bg-blue-100"
+                            onClick={async () => {
+                              try {
+                                await navigator.clipboard.writeText(school.school_code!)
+                                toast.success('School code copied to clipboard!')
+                              } catch (error) {
+                                console.error('Failed to copy school code:', error)
+                                toast.error('Failed to copy school code')
+                              }
+                            }}
+                          >
+                            <Copy className="h-4 w-4 mr-1" />
+                            Copy
+                          </Button>
+                        </div>
+                      </div>
                     )}
                     {school.address && (
                       <p><strong>Address:</strong> {school.address}</p>

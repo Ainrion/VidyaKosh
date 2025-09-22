@@ -262,7 +262,7 @@ export default function Home() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Loading Vidyakosh...</p>
+          <p className="mt-4 text-gray-600 font-medium">Loading Riven...</p>
         </div>
       </div>
     )
@@ -366,7 +366,7 @@ export default function Home() {
                   <GraduationCap className="h-6 w-6 text-white" />
                 </div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Vidyakosh
+                Riven
                 </span>
               </div>
               
@@ -589,7 +589,7 @@ export default function Home() {
               Ready to Transform Your Institution?
             </h2>
             <p className="text-xl mb-8 max-w-3xl mx-auto opacity-90">
-              Join thousands of educational institutions already using Vidyakosh to deliver exceptional learning experiences.
+              Join thousands of educational institutions already using Riven to deliver exceptional learning experiences.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button 
@@ -625,7 +625,7 @@ export default function Home() {
                   <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
                     <GraduationCap className="h-6 w-6 text-white" />
                   </div>
-                  <span className="text-2xl font-bold">Vidyakosh</span>
+                  <span className="text-2xl font-bold">Riven</span>
                 </div>
                 <p className="text-gray-400 mb-6 max-w-md">
                   Empowering educational institutions with cutting-edge learning management technology. 
@@ -656,7 +656,7 @@ export default function Home() {
             
             <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
               <p className="text-gray-400 text-sm">
-                © 2024 Vidyakosh. All rights reserved.
+                © 2025 Riven. All rights reserved.
               </p>
               <div className="flex space-x-6 text-sm text-gray-400 mt-4 md:mt-0">
                 <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>

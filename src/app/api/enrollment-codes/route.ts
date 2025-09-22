@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
       .from('course_enrollment_codes')
       .select(`
         *,
-        course:courses(title, description, school_id),
+        course:courses(id, title, description, school_id, created_by),
         created_by_profile:profiles!course_enrollment_codes_created_by_fkey(full_name, email),
         usage:enrollment_code_usage(
           id,
@@ -61,9 +61,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch enrollment codes' }, { status: 500 })
     }
 
+    // Filter out codes where course is null (orphaned codes)
+    const validCodes = codes?.filter(code => code.course !== null) || []
+
     return NextResponse.json({ 
-      codes: codes || [],
-      total: codes?.length || 0
+      codes: validCodes,
+      total: validCodes.length
     })
   } catch (error) {
     console.error('Error in enrollment codes GET:', error)

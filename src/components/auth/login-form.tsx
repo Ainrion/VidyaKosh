@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label'
 import { authService } from '@/lib/auth-providers'
 import { toast } from 'sonner'
 import { toastMessages } from '@/lib/toast'
-import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, School } from 'lucide-react'
 
 interface LoginFormProps {
   onSwitchToSignup?: () => void
@@ -133,6 +133,14 @@ export function LoginForm({ onSwitchToSignup, onSwitchToForgotPassword }: LoginF
           Don't have an account?
         </p>
         <div className="flex flex-col gap-3">
+          <Link href="/signup?role=admin">
+            <Button 
+              className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg"
+            >
+              <School className="h-4 w-4 mr-2" />
+              Register your school
+            </Button>
+          </Link>
           <Link href="/teachers">
             <Button 
               variant="outline" 

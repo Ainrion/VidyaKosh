@@ -89,8 +89,8 @@ export default function LoginPage() {
         </div>
 
         {/* Bottom Copyright */}
-        <div className="text-center text-sm text-gray-500">
-          © Riven 2024
+        <div className="text-center text-sm text-gray-500 mt-8">
+          © Riven 2025
         </div>
       </div>
 

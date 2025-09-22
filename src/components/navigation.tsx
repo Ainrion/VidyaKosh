@@ -50,7 +50,6 @@ const navigation = {
   ],
   teacher: [
     { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-    { name: 'Course Codes', href: '/teacher/enrollment-codes', icon: LinkIcon, description: 'Generate codes for course enrollment' },
     { name: 'My Courses', href: '/courses', icon: BookOpen },
     { name: 'Quiz Builder', href: '/quiz-builder', icon: Target },
     { name: 'Exams', href: '/exams', icon: ClipboardList },
@@ -190,7 +189,7 @@ export function Navigation() {
                   ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg shadow-blue-500/25'
                   : 'text-slate-300 hover:bg-slate-700/50 hover:text-white hover:shadow-md'
               )}
-              title={isCollapsed ? (item.description || item.name) : item.description}
+              title={isCollapsed ? ((item as any).description || item.name) : ((item as any).description || item.name)}
             >
               
               {/* Icon with animation */}
