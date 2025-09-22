@@ -44,7 +44,7 @@ export default function AssignmentsPage() {
         .from('assignments')
         .select(`
           *,
-          course:courses(title),
+          course:courses(title, school_id),
           assignment_submissions!left(id, submitted_at, grade, student_id)
         `)
 
@@ -77,8 +77,8 @@ export default function AssignmentsPage() {
         query = query.in('course_id', courseIds)
       } else if (profile.role === 'teacher' || profile.role === 'admin') {
         // For teachers and admins: show all assignments in their school
-        // The RLS policies should handle filtering by school_id
-        console.log('Fetching assignments for teacher/admin role')
+        // The RLS policies should handle filtering by school_id, but we'll add extra safety
+        console.log(`Fetching assignments for ${profile.role} in school: ${profile.school_id}`)
       }
 
       // Execute the query
@@ -95,12 +95,19 @@ export default function AssignmentsPage() {
         throw error
       }
 
-      const assignmentsWithSubmissions = data?.map(assignment => ({
+      let assignmentsWithSubmissions = data?.map(assignment => ({
         ...assignment,
         submission: assignment.assignment_submissions?.find((sub: any) => sub.student_id === profile.id)
       })) || []
 
-      console.log(`Fetched ${assignmentsWithSubmissions.length} assignments for ${profile.role}`)
+      // Extra safety: Filter by school_id for teachers and admins
+      if (profile.role === 'teacher' || profile.role === 'admin') {
+        assignmentsWithSubmissions = assignmentsWithSubmissions.filter(assignment => 
+          assignment.course?.school_id === profile.school_id
+        )
+      }
+
+      console.log(`Fetched ${assignmentsWithSubmissions.length} assignments for ${profile.role} in school ${profile.school_id}`)
       setAssignments(assignmentsWithSubmissions)
     } catch (error) {
       console.error('Error fetching assignments:', error)
@@ -179,8 +186,24 @@ export default function AssignmentsPage() {
   return (
     <div className="p-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Assignments</h1>
-          <p className="text-gray-600 mt-1">View and submit your course assignments</p>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Assignments</h1>
+              <p className="text-gray-600 mt-1">
+                {profile?.role === 'student' 
+                  ? 'View and submit your course assignments'
+                  : 'Manage course assignments'
+                }
+              </p>
+            </div>
+            {/* Show create assignment button for teachers and admins */}
+            {(profile?.role === 'teacher' || profile?.role === 'admin') && (
+              <Button onClick={() => router.push('/courses')}>
+                <FileText className="h-4 w-4 mr-2" />
+                Create Assignment
+              </Button>
+            )}
+          </div>
         </div>
 
         {assignments.length === 0 ? (
@@ -261,9 +284,16 @@ export default function AssignmentsPage() {
                       >
                         View Assignment
                       </Button>
-                      {!assignment.submission && (
+                      {/* Show submit button only for students */}
+                      {profile?.role === 'student' && !assignment.submission && (
                         <Button size="sm" variant="outline">
                           Submit Work
+                        </Button>
+                      )}
+                      {/* Show management options for teachers and admins */}
+                      {(profile?.role === 'teacher' || profile?.role === 'admin') && (
+                        <Button size="sm" variant="outline">
+                          Manage
                         </Button>
                       )}
                     </div>

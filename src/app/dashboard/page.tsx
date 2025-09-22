@@ -2,6 +2,7 @@
 
 // DashboardLayout is now handled globally in AppLayout
 import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { BookOpen, Users, MessageSquare, FileText, TrendingUp, Calendar, Activity, Award, Clock, Target, ArrowUpRight, Sparkles, Plus, Eye, CheckCircle, AlertCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -17,6 +18,7 @@ interface DashboardStats {
 
 export default function DashboardPage() {
   const { profile, loading: authLoading } = useAuth()
+  const router = useRouter()
   const [stats, setStats] = useState<DashboardStats>({
     totalCourses: 0,
     totalStudents: 0,
@@ -25,6 +27,14 @@ export default function DashboardPage() {
   })
   const [loading, setLoading] = useState(true)
   const supabase = createClient()
+
+  // Handle authentication redirect
+  useEffect(() => {
+    if (!authLoading && !profile) {
+      router.push('/login')
+      return
+    }
+  }, [profile, authLoading, router])
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -95,6 +105,23 @@ export default function DashboardPage() {
 
     fetchStats()
   }, [profile?.school_id])
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Redirect if not authenticated
+  if (!profile) {
+    return null
+  }
 
   const getGreeting = () => {
     const hour = new Date().getHours()

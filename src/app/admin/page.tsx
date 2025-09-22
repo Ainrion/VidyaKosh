@@ -23,8 +23,7 @@ import {
   BarChart3,
   Settings,
   UserPlus,
-  Mail,
-  Copy
+  Mail
 } from 'lucide-react'
 import Image from 'next/image'
 import { createClient } from '@/lib/supabase/client'
@@ -364,32 +363,10 @@ export default function AdminPage() {
                 <div>
                   <h3 className="font-semibold text-lg mb-2">{school.name}</h3>
                   
-                  {/* School Code Display */}
-                  {school.school_code && (
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-medium text-blue-800">School Code</p>
-                          <p className="text-2xl font-bold text-blue-900 font-mono">{school.school_code}</p>
-                          <p className="text-xs text-blue-600">Share this code with teachers to apply</p>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="border-blue-600 text-blue-600 hover:bg-blue-100"
-                          onClick={() => {
-                            navigator.clipboard.writeText(school.school_code)
-                            // You can add a toast notification here if needed
-                          }}
-                        >
-                          <Copy className="h-4 w-4 mr-1" />
-                          Copy
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
                   <div className="space-y-2 text-sm text-gray-600">
+                    {school.school_code && (
+                      <p><strong>School Code:</strong> {school.school_code}</p>
+                    )}
                     {school.address && (
                       <p><strong>Address:</strong> {school.address}</p>
                     )}

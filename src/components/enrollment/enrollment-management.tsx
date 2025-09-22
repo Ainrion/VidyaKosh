@@ -275,7 +275,7 @@ export default function EnrollmentManagement() {
         </div>
         
         <div className="flex gap-2">
-          <Button 
+          {/* <Button 
             variant="outline" 
             onClick={async () => {
               try {
@@ -379,7 +379,7 @@ export default function EnrollmentManagement() {
             }}
           >
             Test Enrollment Update
-          </Button>
+          </Button> */}
           <Dialog open={bulkEnrollmentOpen} onOpenChange={setBulkEnrollmentOpen}>
             <DialogTrigger asChild>
               <Button>Bulk Enroll Students</Button>

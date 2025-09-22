@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useState } from 'react'
 
@@ -56,7 +56,7 @@ const navigation = {
     { name: 'Exams', href: '/exams', icon: ClipboardList },
     { name: 'Assignments', href: '/assignments', icon: PenTool },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
-    { name: 'Students', href: '/students', icon: Users },
+    { name: 'Students', href: '/users', icon: Users },
     { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Blackboard', href: '/blackboard', icon: FileText },
     { name: 'Profile', href: '/profile', icon: User },
@@ -76,6 +76,7 @@ const navigation = {
 export function Navigation() {
   const { profile, signOut } = useAuth()
   const pathname = usePathname()
+  const router = useRouter()
   const [isCollapsed, setIsCollapsed] = useState(false)
 
   if (!profile) {
@@ -191,10 +192,6 @@ export function Navigation() {
               )}
               title={isCollapsed ? (item.description || item.name) : item.description}
             >
-              {/* Active indicator */}
-              {isActive && (
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r-full" />
-              )}
               
               {/* Icon with animation */}
               <div className={cn(
@@ -240,8 +237,12 @@ export function Navigation() {
               onClick={async () => {
                 try {
                   await signOut()
+                  // Force redirect using router as backup
+                  router.push('/login')
                 } catch (error) {
                   console.error('Sign out error:', error)
+                  // Even if sign out fails, redirect to login
+                  router.push('/login')
                 }
               }}
               className="w-full justify-start gap-3 text-slate-300 hover:text-white hover:bg-red-500/20 hover:border-red-500/30 border border-transparent transition-all duration-200 rounded-xl py-3"
@@ -262,8 +263,12 @@ export function Navigation() {
               onClick={async () => {
                 try {
                   await signOut()
+                  // Force redirect using router as backup
+                  router.push('/login')
                 } catch (error) {
                   console.error('Sign out error:', error)
+                  // Even if sign out fails, redirect to login
+                  router.push('/login')
                 }
               }}
               className="text-slate-300 hover:text-white hover:bg-red-500/20 transition-all duration-200 rounded-xl p-2"

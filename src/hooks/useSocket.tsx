@@ -41,6 +41,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createClient(), [])
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const socketInitializedRef = useRef(false)
 
   // Initialize Socket.IO connection
   useEffect(() => {
@@ -48,6 +49,14 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       console.log('❌ No user or profile, skipping socket connection')
       return
     }
+
+    // Prevent multiple connections
+    if (socket || socketInitializedRef.current) {
+      console.log('🔗 Socket already exists or initialized, skipping initialization')
+      return
+    }
+
+    socketInitializedRef.current = true
 
     console.log('🔗 Initializing Socket.IO connection...')
     setConnectionStatus('connecting')
@@ -61,8 +70,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       timeout: 20000,
       forceNew: true,
       reconnection: true,
-      reconnectionDelay: 1000,
-      reconnectionAttempts: 10,
+      reconnectionDelay: 2000, // Increased delay to prevent rapid reconnections
+      reconnectionAttempts: 5, // Reduced attempts to prevent infinite loops
       autoConnect: true
     })
 
@@ -84,13 +93,15 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setIsConnected(false)
       setConnectionStatus('disconnected')
       
-      // Auto-reconnect logic
+      // Auto-reconnect logic - only for server-initiated disconnects
       if (reason === 'io server disconnect') {
         // Server initiated disconnect, try to reconnect
         reconnectTimeoutRef.current = setTimeout(() => {
           console.log('🔄 Attempting to reconnect...')
-          socketInstance.connect()
-        }, 2000)
+          if (!socketInstance.connected) {
+            socketInstance.connect()
+          }
+        }, 3000) // Increased delay to prevent rapid reconnections
       }
     })
 
@@ -180,8 +191,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setSocket(null)
       setIsConnected(false)
       setConnectionStatus('disconnected')
+      socketInitializedRef.current = false
     }
-  }, [user, profile])
+  }, [user?.id, profile?.id]) // Only depend on IDs to prevent unnecessary reconnections
 
   // Join channel
   const joinChannel = useCallback(async (channelId: string) => {
