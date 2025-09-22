@@ -363,7 +363,7 @@ export default function Home() {
           transition={{ duration: 0.5 }}
         >
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Loading Vidyakosh...</p>
+          <p className="mt-4 text-gray-600 font-medium">Loading Riven...</p>
         </motion.div>
       </div>
     )
@@ -469,7 +469,7 @@ export default function Home() {
       name: 'Dr. Sarah Johnson',
       role: 'Principal, Westfield Academy',
       image: '/api/placeholder/64/64',
-      content: 'Vidyakosh has transformed our teaching methodology. Student engagement has increased by 300% since implementation.',
+      content: 'Riven has transformed our teaching methodology. Student engagement has increased by 300% since implementation.',
       rating: 5
     },
     {
@@ -509,7 +509,7 @@ export default function Home() {
                   <GraduationCap className="h-6 w-6 text-white" />
                 </div>
                 <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Vidyakosh
+                Riven
                 </span>
               </motion.div>
               
@@ -813,7 +813,7 @@ export default function Home() {
                 Trusted by Educators Worldwide
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                See what educational leaders are saying about their experience with Vidyakosh.
+                See what educational leaders are saying about their experience with Riven.
               </p>
             </motion.div>
 
@@ -863,7 +863,7 @@ export default function Home() {
                 Ready to Transform Your Institution?
               </h2>
               <p className="text-xl mb-8 max-w-3xl mx-auto opacity-90">
-                Join thousands of educational institutions already using Vidyakosh to deliver exceptional learning experiences.
+                Join thousands of educational institutions already using Riven to deliver exceptional learning experiences.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <motion.div variants={buttonVariants} whileHover="hover" whileTap="tap">
@@ -881,10 +881,10 @@ export default function Home() {
                   <Button 
                     size="lg" 
                     variant="outline" 
-                    className="border-2 border-white text-white hover:bg-white hover:text-blue-600 font-semibold px-8 py-4 text-lg"
+                    className="border-2 border-white text-black  font-semibold px-8 py-4 text-lg"
                     asChild
                   >
-                    <Link href="/login">
+                    <Link href="/contact">
                       <Mail className="h-5 w-5 mr-2" />
                       Contact Sales
                     </Link>
@@ -904,7 +904,7 @@ export default function Home() {
                   <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
                     <GraduationCap className="h-6 w-6 text-white" />
                   </div>
-                  <span className="text-2xl font-bold">Vidyakosh</span>
+                  <span className="text-2xl font-bold">Riven</span>
                 </div>
                 <p className="text-gray-400 mb-6 max-w-md">
                   Empowering educational institutions with cutting-edge learning management technology. 
@@ -938,7 +938,7 @@ export default function Home() {
                 <ul className="space-y-3 text-gray-400">
                   <li><Link href="#" className="hover:text-white transition-colors">Documentation</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">Help Center</Link></li>
-                  <li><Link href="#" className="hover:text-white transition-colors">Contact Us</Link></li>
+                  <li><Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">Status</Link></li>
                 </ul>
               </div>
@@ -946,7 +946,7 @@ export default function Home() {
             
             <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
               <p className="text-gray-400 text-sm">
-                © 2024 Vidyakosh. All rights reserved.
+                © 2025 Riven. All rights reserved.
               </p>
               <div className="flex space-x-6 text-sm text-gray-400 mt-4 md:mt-0">
                 <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>

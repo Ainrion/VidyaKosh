@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
           </p>
         </div>
       `,
-      text: `Test Email from Vidyakosh\n\nMessage: ${message || 'No message provided'}\n\nSent at: ${new Date().toISOString()}\n\nIf you received this email, your email configuration is working correctly!`
+      text: `Test Email from Riven\n\nMessage: ${message || 'No message provided'}\n\nSent at: ${new Date().toISOString()}\n\nIf you received this email, your email configuration is working correctly!`
     })
 
     if (success) {

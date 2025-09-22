@@ -41,7 +41,7 @@ export default function Home() {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
               <BookOpen className="h-8 w-8 text-blue-600" />
-              <h1 className="ml-2 text-2xl font-bold text-gray-900">Vidyakosh</h1>
+              <h1 className="ml-2 text-2xl font-bold text-gray-900">Riven</h1>
             </div>
             <div className="space-x-4">
               <Button variant="outline" asChild>
@@ -119,7 +119,7 @@ export default function Home() {
           <CardContent className="text-center py-12">
             <h2 className="text-3xl font-bold mb-4">Ready to get started?</h2>
             <p className="text-blue-100 mb-8 text-lg">
-              Join thousands of schools already using Vidyakosh to enhance their learning experience
+              Join thousands of schools already using Riven to enhance their learning experience
             </p>
             <Button size="lg" variant="secondary" asChild>
               <Link href="/signup">Create Your School Account</Link>
@@ -134,9 +134,9 @@ export default function Home() {
           <div className="flex justify-between items-center">
             <div className="flex items-center">
               <BookOpen className="h-6 w-6 text-blue-600" />
-              <span className="ml-2 text-lg font-semibold text-gray-900">Vidyakosh</span>
+              <span className="ml-2 text-lg font-semibold text-gray-900">Riven</span>
             </div>
-            <p className="text-gray-500">&copy; 2024 Vidyakosh. All rights reserved.</p>
+            <p className="text-gray-500">&copy; 2025 Riven. All rights reserved.</p>
           </div>
         </div>
       </footer>

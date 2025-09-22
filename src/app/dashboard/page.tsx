@@ -236,17 +236,6 @@ export default function DashboardPage() {
         iconColor: 'text-purple-600',
         href: '/assignments'
       },
-      {
-        title: 'Enrollment Codes',
-        description: 'Manage course enrollment',
-        icon: Target,
-        color: 'from-orange-50 to-amber-50',
-        hoverColor: 'hover:from-orange-100 hover:to-amber-100',
-        iconBg: 'bg-orange-100',
-        iconHover: 'group-hover:bg-orange-200',
-        iconColor: 'text-orange-600',
-        href: '/teacher/enrollment-codes'
-      }
     ],
     student: [
       {

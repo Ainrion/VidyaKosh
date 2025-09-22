@@ -138,7 +138,7 @@ const SchoolRegistrationForm = ({ onClose }: { onClose: () => void }) => {
       }
 
       // Success - redirect to login with success message
-      router.push('/login?message=' + encodeURIComponent('Registration successful! Please check your email to verify your account and complete the setup.'))
+      router.push('/login?message=' + encodeURIComponent('Registration successful! Please login using the credential you just created and complete the setup.'))
     } catch (error: any) {
       console.error('Registration error:', error)
       setError(error.message || 'Registration failed. Please try again.')
@@ -348,47 +348,51 @@ export default function Home() {
   const pricingPlans = [
     {
       name: 'Starter',
-      price: '49',
-      period: 'month',
+      price: '1,00,000',
+      period: 'year',
+      perStudent: '₹200 per student',
+      studentLimit: 'Up to 500 Students',
       description: 'Perfect for small schools getting started',
       features: [
-        'Up to 100 students',
-        '5 courses',
+        'Course management & assignments',
+        'Attendance tracking',
+        'Parent login & reports',
         'Basic analytics',
-        'Email support',
-        'Mobile app access'
+        'Email support'
       ],
       popular: false
     },
     {
-      name: 'Professional',
-      price: '149',
-      period: 'month',
+      name: 'Growth',
+      price: '1,75,000',
+      period: 'year',
+      perStudent: '₹175 per student',
+      studentLimit: 'Up to 1000 Students',
       description: 'Ideal for growing educational institutions',
       features: [
-        'Up to 500 students',
-        'Unlimited courses',
+        'Everything in Starter +',
+        'Live classes integration',
+        'Online fee collection',
+        'Automated grading',
         'Advanced analytics',
-        'Priority support',
-        'Custom branding',
-        'API access',
-        'Integrations'
+        'Email + chat support'
       ],
       popular: true
     },
     {
-      name: 'Enterprise',
-      price: 'Custom',
-      period: '',
-      description: 'For large institutions with specific needs',
+      name: 'Premium',
+      price: '2,99,000',
+      period: 'year',
+      perStudent: '₹150 per student',
+      studentLimit: 'Up to 2000 Students',
+      description: 'Advanced features for established schools',
       features: [
-        'Unlimited students',
-        'Unlimited courses',
-        'Custom analytics',
-        '24/7 phone support',
-        'White-label solution',
-        'Custom integrations',
-        'Dedicated success manager'
+        'Everything in Growth +',
+        'Multi-branch support',
+        'Custom branding',
+        'Bulk imports',
+        'Priority support',
+        'Phone + chat support'
       ],
       popular: false
     }
@@ -417,6 +421,12 @@ export default function Home() {
               </div>
               
               <div className="flex items-center space-x-4">
+                <Button variant="ghost" asChild className="hidden sm:inline-flex">
+                  <Link href="/pricing">Pricing</Link>
+                </Button>
+                <Button variant="ghost" asChild className="hidden sm:inline-flex">
+                  <Link href="/contact">Contact</Link>
+                </Button>
                 <Button variant="ghost" asChild className="hidden sm:inline-flex">
                   <Link href="/login">Sign In</Link>
                 </Button>
@@ -560,11 +570,19 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-16">
               <h2 className="text-4xl font-bold text-gray-900 mb-4">
-                Simple, Transparent Pricing
+                🏫 Schools Pricing
               </h2>
               <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-                Choose the perfect plan for your institution. All plans include a 14-day free trial with no setup fees.
+                Competitive annual pricing in INR. Well positioned against market leaders like TCS iON and Teachmint.
               </p>
+              <div className="mt-6">
+                <Button variant="outline" asChild className="border-2 border-blue-500 text-blue-600 hover:bg-blue-50">
+                  <Link href="/pricing">
+                    View All Pricing Plans
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Link>
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -587,16 +605,12 @@ export default function Home() {
 
                   <div className="text-center mb-8">
                     <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
-                    <div className="mb-4">
-                      {plan.price === 'Custom' ? (
-                        <span className="text-4xl font-bold text-gray-900">Custom</span>
-                      ) : (
-                        <>
-                          <span className="text-4xl font-bold text-gray-900">${plan.price}</span>
-                          <span className="text-gray-600">/{plan.period}</span>
-                        </>
-                      )}
+                    <div className="mb-2">
+                      <span className="text-4xl font-bold text-gray-900">₹{plan.price}</span>
+                      <span className="text-gray-600">/{plan.period}</span>
                     </div>
+                    <p className="text-sm text-blue-600 font-semibold mb-2">{plan.perStudent}</p>
+                    <p className="text-sm text-gray-500 mb-4">{plan.studentLimit}</p>
                     <p className="text-gray-600">{plan.description}</p>
                   </div>
 
@@ -648,14 +662,14 @@ export default function Home() {
               <Button 
                 size="lg" 
                 variant="outline" 
-                className="border-2 border-white text-blue-600 bg-white hover:bg-gray-100 hover:text-blue-500  font-semibold px-8 py-4 text-lg"
+                className="border-2 border-white text-blue-600 hover:bg-white hover:text-blue-700 font-semibold px-8 py-4 text-lg"
                 asChild
               >
-                <Link href="/login">
+                <Link href="/contact">
                   <Mail className="h-5 w-5 mr-2" />
                   Contact Sales
-                      </Link>
-                    </Button>
+                </Link>
+              </Button>
             </div>
           </div>
         </section>
@@ -687,7 +701,8 @@ export default function Home() {
                 <h3 className="font-semibold text-lg mb-4">Product</h3>
                 <ul className="space-y-3 text-gray-400">
                   <li><Link href="#" className="hover:text-white transition-colors">Features</Link></li>
-                  <li><Link href="#" className="hover:text-white transition-colors">Pricing</Link></li>
+                  <li><Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
+                  <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">Integrations</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">API</Link></li>
                 </ul>
@@ -698,7 +713,7 @@ export default function Home() {
                 <ul className="space-y-3 text-gray-400">
                   <li><Link href="#" className="hover:text-white transition-colors">Documentation</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">Help Center</Link></li>
-                  <li><Link href="#" className="hover:text-white transition-colors">Contact Us</Link></li>
+                  <li><Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">Status</Link></li>
                 </ul>
               </div>
@@ -706,7 +721,7 @@ export default function Home() {
             
             <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
               <p className="text-gray-400 text-sm">
-                © 2024 Riven. All rights reserved.
+                © 2025 Riven. All rights reserved.
               </p>
               <div className="flex space-x-6 text-sm text-gray-400 mt-4 md:mt-0">
                 <Link href="#" className="hover:text-white transition-colors">Privacy Policy</Link>
