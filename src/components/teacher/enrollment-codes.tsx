@@ -70,7 +70,19 @@ export default function EnrollmentCodes() {
         throw new Error(`HTTP error! status: ${response.status}`)
       }
       const data = await response.json()
-      setCodes(data.codes || [])
+      console.log('Fetched enrollment codes:', data.codes)
+      
+      // Filter out any codes with null or invalid data
+      const validCodes = (data.codes || []).filter((code: any) => {
+        return code && 
+               code.id && 
+               code.title && 
+               code.course && 
+               code.course.title
+      })
+      
+      console.log('Valid enrollment codes:', validCodes)
+      setCodes(validCodes)
     } catch (error) {
       console.error('Error fetching enrollment codes:', error)
       setCodes([])
@@ -327,13 +339,13 @@ export default function EnrollmentCodes() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {codes.map((code) => (
+          {codes.filter(code => code && code.id).map((code) => (
             <Card key={code.id} className={!code.is_active ? 'opacity-60' : ''}>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-lg">{code.title}</CardTitle>
-                    <CardDescription>{code.course.title}</CardDescription>
+                    <CardTitle className="text-lg">{code.title || 'Untitled'}</CardTitle>
+                    <CardDescription>{code.course?.title || 'No course assigned'}</CardDescription>
                   </div>
                   <div className="flex items-center space-x-2">
                     {code.is_active ? (
@@ -419,13 +431,13 @@ export default function EnrollmentCodes() {
                   </Button>
                 </div>
 
-                {code.usage.length > 0 && (
+                {code.usage && code.usage.length > 0 && (
                   <div className="border-t pt-4">
                     <p className="font-medium text-sm mb-2">Recent Usage</p>
                     <div className="space-y-2">
                       {code.usage.slice(0, 3).map((usage) => (
                         <div key={usage.id} className="flex items-center justify-between text-sm">
-                          <span>{usage.student_profile.full_name}</span>
+                          <span>{usage.student_profile?.full_name || 'Unknown Student'}</span>
                           <span className="text-gray-500">{formatDate(usage.used_at)}</span>
                         </div>
                       ))}

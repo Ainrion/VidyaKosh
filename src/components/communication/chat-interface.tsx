@@ -68,21 +68,21 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
 
   // Join channel when selected
   useEffect(() => {
-    if (selectedChannel?.id) {
+    if (selectedChannel) {
       console.log('🔗 Joining channel from chat interface:', selectedChannel.id)
       joinChannel(selectedChannel.id)
     }
 
     return () => {
-      if (selectedChannel?.id) {
+      if (selectedChannel) {
         leaveChannel(selectedChannel.id)
       }
     }
-  }, [selectedChannel?.id, joinChannel, leaveChannel]) // Only depend on channel ID
+  }, [selectedChannel?.id]) // Only depend on the channel ID, not the functions
 
   // Handle typing indicators
   const handleTyping = useCallback(() => {
-    if (!selectedChannel?.id || !profile) return
+    if (!selectedChannel || !profile) return
 
     if (!isTyping) {
       setIsTyping(true)
@@ -99,13 +99,13 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
       setIsTyping(false)
       stopTyping(selectedChannel.id)
     }, 2000)
-  }, [selectedChannel?.id, profile?.id, isTyping, startTyping, stopTyping]) // Only depend on IDs
+  }, [selectedChannel, profile, isTyping, startTyping, stopTyping])
 
   // Handle message sending
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!newMessage.trim() || !selectedChannel?.id || isSending) return
+    if (!newMessage.trim() || !selectedChannel || isSending) return
 
     setIsSending(true)
     
@@ -115,7 +115,9 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
       if (success) {
         setNewMessage('')
         setIsTyping(false)
-        stopTyping(selectedChannel.id)
+        if (selectedChannel) {
+          stopTyping(selectedChannel.id)
+        }
         // Focus back to input
         inputRef.current?.focus()
       } else {
@@ -126,22 +128,13 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
     } finally {
       setIsSending(false)
     }
-  }, [newMessage, selectedChannel?.id, isSending, sendMessage, stopTyping]) // Only depend on channel ID
+  }, [newMessage, selectedChannel, isSending, sendMessage, stopTyping])
 
   // Handle input changes
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value)
     handleTyping()
   }, [handleTyping])
-
-  // Cleanup typing timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current)
-      }
-    }
-  }, [])
 
   // Get connection status color
   const getConnectionStatusColor = () => {
@@ -167,7 +160,7 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
   const getRoleInfo = (role: string) => {
     switch (role.toLowerCase()) {
       case 'admin':
-        return { symbol: 'A', icon: Crown, color: 'text-red-500 bg-red-100', label: 'Admin' }
+        return { symbol: 'A', icon: Crown, color: 'text-yellow-600 bg-yellow-100', label: 'Admin' }
       case 'teacher':
         return { symbol: 'T', icon: BookOpen, color: 'text-blue-500 bg-blue-100', label: 'Teacher' }
       case 'student':
@@ -293,10 +286,6 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
                           {message.sender.full_name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      {/* Role Symbol Badge */}
-                      <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full ${roleInfo.color} flex items-center justify-center border-2 border-white shadow-lg`}>
-                        <span className="text-xs font-bold text-white">{roleInfo.symbol}</span>
-                      </div>
                     </div>
                     
                     <div className={`flex flex-col max-w-[70%] ${isOwnMessage ? 'items-end' : 'items-start'}`}>
@@ -457,13 +446,13 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
             </div>
             <div className="flex items-center gap-4 text-sm text-gray-400">
               <div className="flex items-center gap-2">
-                <Crown className="h-4 w-4 text-yellow-500" />
-                <span className="font-medium">Admin</span>
+                <Crown className="h-4 w-4 text-yellow-600" />
+                <span className="font-medium text-yellow-600">Admin</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="h-4 w-4">
                   <Image 
-                    src="/logo.png" 
+                    src="/r-logo.svg" 
                     alt="Riven Logo" 
                     width={16} 
                     height={16}

@@ -15,7 +15,6 @@ type Message = Database['public']['Tables']['messages']['Row'] & {
 }
 
 interface SocketContextType {
-  socket: Socket | null
   isConnected: boolean
   joinChannel: (channelId: string) => void
   leaveChannel: (channelId: string) => void
@@ -39,9 +38,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   
   const { user, profile } = useAuth()
   const supabase = useMemo(() => createClient(), [])
-  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const socketInitializedRef = useRef(false)
+  const typingTimeoutRef = useRef<NodeJS.Timeout>()
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout>()
+  const currentChannelRef = useRef<string | null>(null)
 
   // Initialize Socket.IO connection
   useEffect(() => {
@@ -50,29 +49,18 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
-    // Prevent multiple connections
-    if (socket || socketInitializedRef.current) {
-      console.log('🔗 Socket already exists or initialized, skipping initialization')
-      return
-    }
-
-    socketInitializedRef.current = true
-
     console.log('🔗 Initializing Socket.IO connection...')
     setConnectionStatus('connecting')
 
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001'
-    console.log('🔗 Connecting to Socket.IO server:', socketUrl)
-    
-    const socketInstance = io(socketUrl, {
-      transports: ['polling', 'websocket'], // Try polling first, then upgrade
+    const socketInstance = io('http://localhost:3001', {
+      transports: ['websocket', 'polling'],
       upgrade: true,
       timeout: 20000,
       forceNew: true,
       reconnection: true,
-      reconnectionDelay: 2000, // Increased delay to prevent rapid reconnections
-      reconnectionAttempts: 5, // Reduced attempts to prevent infinite loops
-      autoConnect: true
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
+      maxReconnectionAttempts: 5
     })
 
     // Connection events
@@ -93,21 +81,23 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setIsConnected(false)
       setConnectionStatus('disconnected')
       
-      // Auto-reconnect logic - only for server-initiated disconnects
+      // Auto-reconnect logic
       if (reason === 'io server disconnect') {
         // Server initiated disconnect, try to reconnect
         reconnectTimeoutRef.current = setTimeout(() => {
           console.log('🔄 Attempting to reconnect...')
-          if (!socketInstance.connected) {
-            socketInstance.connect()
-          }
-        }, 3000) // Increased delay to prevent rapid reconnections
+          socketInstance.connect()
+        }, 2000)
       }
     })
 
     socketInstance.on('connect_error', (error) => {
       console.error('🔴 Socket connection error:', {
         message: error.message,
+        description: error.description,
+        context: error.context,
+        type: error.type,
+        transport: error.transport,
         stack: error.stack
       })
       setIsConnected(false)
@@ -191,9 +181,8 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       setSocket(null)
       setIsConnected(false)
       setConnectionStatus('disconnected')
-      socketInitializedRef.current = false
     }
-  }, [user?.id, profile?.id]) // Only depend on IDs to prevent unnecessary reconnections
+  }, [user, profile])
 
   // Join channel
   const joinChannel = useCallback(async (channelId: string) => {
@@ -205,14 +194,15 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     console.log('🔗 Joining channel:', channelId)
     
     // Leave current channel first
-    if (currentChannel && currentChannel !== channelId) {
-      console.log('📤 Leaving current channel:', currentChannel)
-      socket.emit('leave-channel', currentChannel)
+    if (currentChannelRef.current && currentChannelRef.current !== channelId) {
+      console.log('📤 Leaving current channel:', currentChannelRef.current)
+      socket.emit('leave-channel', currentChannelRef.current)
     }
 
     // Join new channel
     socket.emit('join-channel', channelId)
     setCurrentChannel(channelId)
+    currentChannelRef.current = channelId
 
     // Fetch existing messages from database
     try {
@@ -238,7 +228,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       console.error('❌ Error fetching messages:', error)
       setMessages([])
     }
-  }, [socket, user, profile, currentChannel, supabase])
+  }, [socket, user, profile, supabase]) // Removed currentChannel from dependencies
 
   // Send message
   const sendMessage = useCallback(async (channelId: string, content: string): Promise<boolean> => {
@@ -324,6 +314,7 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     console.log('📤 Leaving channel:', channelId)
     socket.emit('leave-channel', channelId)
     setCurrentChannel(null)
+    currentChannelRef.current = null
     setMessages([])
     setTypingUsers({})
   }, [socket])
@@ -341,7 +332,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const contextValue = useMemo(() => ({
-    socket,
     isConnected,
     joinChannel,
     leaveChannel,
@@ -352,7 +342,6 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     stopTyping,
     connectionStatus
   }), [
-    socket,
     isConnected,
     joinChannel,
     leaveChannel,
