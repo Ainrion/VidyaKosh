@@ -191,10 +191,6 @@ export function Navigation() {
               )}
               title={isCollapsed ? (item.description || item.name) : item.description}
             >
-              {/* Active indicator */}
-              {isActive && (
-                <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r-full" />
-              )}
               
               {/* Icon with animation */}
               <div className={cn(
