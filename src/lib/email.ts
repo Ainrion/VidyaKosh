@@ -134,7 +134,7 @@ export function generateInvitationEmail(data: InvitationEmailData): { html: stri
         .cta-button {
           display: inline-block;
           background: linear-gradient(135deg, #667eea, #764ba2);
-          color: white;
+          color: white !important;
           padding: 16px 32px;
           text-decoration: none;
           border-radius: 12px;

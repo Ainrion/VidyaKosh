@@ -884,7 +884,7 @@ export default function Home() {
                     className="border-2 border-white text-black  font-semibold px-8 py-4 text-lg"
                     asChild
                   >
-                    <Link href="/login">
+                    <Link href="/contact">
                       <Mail className="h-5 w-5 mr-2" />
                       Contact Sales
                     </Link>
@@ -938,7 +938,7 @@ export default function Home() {
                 <ul className="space-y-3 text-gray-400">
                   <li><Link href="#" className="hover:text-white transition-colors">Documentation</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">Help Center</Link></li>
-                  <li><Link href="#" className="hover:text-white transition-colors">Contact Us</Link></li>
+                  <li><Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">Status</Link></li>
                 </ul>
               </div>

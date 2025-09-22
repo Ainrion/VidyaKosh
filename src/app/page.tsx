@@ -425,6 +425,9 @@ export default function Home() {
                   <Link href="/pricing">Pricing</Link>
                 </Button>
                 <Button variant="ghost" asChild className="hidden sm:inline-flex">
+                  <Link href="/contact">Contact</Link>
+                </Button>
+                <Button variant="ghost" asChild className="hidden sm:inline-flex">
                   <Link href="/login">Sign In</Link>
                 </Button>
                 <Button 
@@ -662,7 +665,7 @@ export default function Home() {
                 className="border-2 border-white text-blue-600 hover:bg-white hover:text-blue-700 font-semibold px-8 py-4 text-lg"
                 asChild
               >
-                <Link href="/login">
+                <Link href="/contact">
                   <Mail className="h-5 w-5 mr-2" />
                   Contact Sales
                 </Link>
@@ -699,6 +702,7 @@ export default function Home() {
                 <ul className="space-y-3 text-gray-400">
                   <li><Link href="#" className="hover:text-white transition-colors">Features</Link></li>
                   <li><Link href="/pricing" className="hover:text-white transition-colors">Pricing</Link></li>
+                  <li><Link href="/contact" className="hover:text-white transition-colors">Contact</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">Integrations</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">API</Link></li>
                 </ul>
@@ -709,7 +713,7 @@ export default function Home() {
                 <ul className="space-y-3 text-gray-400">
                   <li><Link href="#" className="hover:text-white transition-colors">Documentation</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">Help Center</Link></li>
-                  <li><Link href="#" className="hover:text-white transition-colors">Contact Us</Link></li>
+                  <li><Link href="/contact" className="hover:text-white transition-colors">Contact Us</Link></li>
                   <li><Link href="#" className="hover:text-white transition-colors">Status</Link></li>
                 </ul>
               </div>
