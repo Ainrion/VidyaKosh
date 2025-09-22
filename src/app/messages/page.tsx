@@ -86,10 +86,13 @@ export default function MessagesPage() {
       console.log('Fetched channels:', data)
       setChannels(data || [])
       
-      // Auto-select first channel if none selected
-      if (data && data.length > 0 && !selectedChannel) {
-        setSelectedChannel(data[0])
-      }
+      // Auto-select first channel if none selected - use functional update to avoid dependency
+      setSelectedChannel(prev => {
+        if (!prev && data && data.length > 0) {
+          return data[0]
+        }
+        return prev
+      })
     } catch (error) {
       console.error('Failed to fetch channels:', {
         message: error instanceof Error ? error.message : 'Unknown error',
@@ -99,7 +102,7 @@ export default function MessagesPage() {
     } finally {
       setLoading(false)
     }
-  }, [profile?.school_id, supabase, selectedChannel])
+  }, [profile?.school_id, supabase])
 
 
   useEffect(() => {

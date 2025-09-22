@@ -68,21 +68,21 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
 
   // Join channel when selected
   useEffect(() => {
-    if (selectedChannel) {
+    if (selectedChannel?.id) {
       console.log('🔗 Joining channel from chat interface:', selectedChannel.id)
       joinChannel(selectedChannel.id)
     }
 
     return () => {
-      if (selectedChannel) {
+      if (selectedChannel?.id) {
         leaveChannel(selectedChannel.id)
       }
     }
-  }, [selectedChannel, joinChannel, leaveChannel])
+  }, [selectedChannel?.id, joinChannel, leaveChannel]) // Only depend on channel ID
 
   // Handle typing indicators
   const handleTyping = useCallback(() => {
-    if (!selectedChannel || !profile) return
+    if (!selectedChannel?.id || !profile) return
 
     if (!isTyping) {
       setIsTyping(true)
@@ -99,13 +99,13 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
       setIsTyping(false)
       stopTyping(selectedChannel.id)
     }, 2000)
-  }, [selectedChannel, profile, isTyping, startTyping, stopTyping])
+  }, [selectedChannel?.id, profile?.id, isTyping, startTyping, stopTyping]) // Only depend on IDs
 
   // Handle message sending
   const handleSendMessage = useCallback(async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!newMessage.trim() || !selectedChannel || isSending) return
+    if (!newMessage.trim() || !selectedChannel?.id || isSending) return
 
     setIsSending(true)
     
@@ -115,9 +115,7 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
       if (success) {
         setNewMessage('')
         setIsTyping(false)
-        if (selectedChannel) {
-          stopTyping(selectedChannel.id)
-        }
+        stopTyping(selectedChannel.id)
         // Focus back to input
         inputRef.current?.focus()
       } else {
@@ -128,13 +126,22 @@ export default function ChatInterface({ selectedChannel, onChannelSelect }: Chat
     } finally {
       setIsSending(false)
     }
-  }, [newMessage, selectedChannel, isSending, sendMessage, stopTyping])
+  }, [newMessage, selectedChannel?.id, isSending, sendMessage, stopTyping]) // Only depend on channel ID
 
   // Handle input changes
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setNewMessage(e.target.value)
     handleTyping()
   }, [handleTyping])
+
+  // Cleanup typing timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current)
+      }
+    }
+  }, [])
 
   // Get connection status color
   const getConnectionStatusColor = () => {
