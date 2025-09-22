@@ -245,10 +245,22 @@ export default function AssignmentDetailPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Assignments
           </Button>
-          {!assignment.submission && (
+          {/* Show submit button only for students */}
+          {profile?.role === 'student' && !assignment.submission && (
             <Button variant="outline">
               Submit Work
             </Button>
+          )}
+          {/* Show management options for teachers and admins */}
+          {(profile?.role === 'teacher' || profile?.role === 'admin') && (
+            <>
+              <Button variant="outline">
+                Edit Assignment
+              </Button>
+              <Button variant="outline">
+                View Submissions
+              </Button>
+            </>
           )}
         </div>
       </div>
