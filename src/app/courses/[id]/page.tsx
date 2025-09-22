@@ -73,6 +73,8 @@ export default function CourseDetailsPage() {
     title: '',
     description: ''
   })
+  const [enrollmentCode, setEnrollmentCode] = useState<string | null>(null)
+  const [loadingCode, setLoadingCode] = useState(false)
   const supabase = createClient()
   const router = useRouter()
   const params = useParams()
@@ -151,6 +153,32 @@ export default function CourseDetailsPage() {
   }, [courseId, profile?.role, profile?.id, supabase])
 
   // Old enrollment functionality removed - students now use enrollment codes
+
+  const fetchEnrollmentCode = useCallback(async () => {
+    if (!courseId) return
+    
+    setLoadingCode(true)
+    try {
+      const { data, error } = await supabase
+        .from('course_enrollment_codes')
+        .select('code, title, description, is_active, expires_at, max_uses, current_uses')
+        .eq('course_id', courseId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single()
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+        console.error('Error fetching enrollment code:', error)
+      } else if (data) {
+        setEnrollmentCode(data.code)
+      }
+    } catch (error) {
+      console.error('Error fetching enrollment code:', error)
+    } finally {
+      setLoadingCode(false)
+    }
+  }, [courseId, supabase])
 
   const createAssignment = async () => {
     if (!newAssignment.title.trim()) return
@@ -286,8 +314,9 @@ export default function CourseDetailsPage() {
       fetchEnrollments()
       fetchAssignments()
       checkEnrollment()
+      fetchEnrollmentCode()
     }
-  }, [courseId, profile?.school_id, fetchCourseDetails, fetchEnrollments, fetchAssignments, checkEnrollment])
+  }, [courseId, profile?.school_id, fetchCourseDetails, fetchEnrollments, fetchAssignments, checkEnrollment, fetchEnrollmentCode])
 
   if (loading) {
     return (
@@ -418,6 +447,43 @@ export default function CourseDetailsPage() {
                   {assignments.length} assignment{assignments.length !== 1 ? 's' : ''}
                 </span>
               </div>
+              {/* Enrollment Code Section - Only show for teachers and admins */}
+              {canManageCourse && (
+                <div className="pt-4 border-t">
+                  <div className="flex items-center gap-2 mb-2">
+                    <UserPlus className="h-4 w-4 text-gray-500" />
+                    <span className="text-sm font-medium">Enrollment Code</span>
+                  </div>
+                  {loadingCode ? (
+                    <div className="text-sm text-gray-500">Loading...</div>
+                  ) : enrollmentCode ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono">
+                          {enrollmentCode}
+                        </code>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            navigator.clipboard.writeText(enrollmentCode)
+                            // You could add a toast notification here
+                          }}
+                        >
+                          Copy
+                        </Button>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Share this code with students to let them join this course
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500">
+                      No enrollment code found. Create one in the course settings.
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-gray-500" />
                 <span className="text-sm">

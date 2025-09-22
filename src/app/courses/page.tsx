@@ -97,7 +97,8 @@ export default function CoursesPage() {
     if (!profile?.school_id || !newCourse.title.trim()) return
 
     try {
-      const { data, error } = await supabase
+      // Create the course
+      const { data: courseData, error: courseError } = await supabase
         .from('courses')
         .insert({
           title: newCourse.title.trim(),
@@ -108,10 +109,43 @@ export default function CoursesPage() {
         .select()
         .single()
 
-      if (error) throw error
+      if (courseError) throw courseError
+
+      // Generate enrollment code for the course
+      try {
+        const { data: codeData, error: codeError } = await supabase
+          .rpc('generate_enrollment_code')
+
+        if (codeError) {
+          console.error('Error generating enrollment code:', codeError)
+          // Continue without code - course is still created
+        } else {
+          // Create enrollment code for the course
+          const { error: createCodeError } = await supabase
+            .from('course_enrollment_codes')
+            .insert({
+              course_id: courseData.id,
+              code: codeData,
+              created_by: profile.id,
+              title: `${newCourse.title.trim()} Enrollment Code`,
+              description: `Join ${newCourse.title.trim()} using this code`,
+              is_active: true
+            })
+
+          if (createCodeError) {
+            console.error('Error creating enrollment code:', createCodeError)
+            // Continue without code - course is still created
+          } else {
+            console.log(`Enrollment code ${codeData} created for course ${newCourse.title.trim()}`)
+          }
+        }
+      } catch (codeError) {
+        console.error('Error in enrollment code generation:', codeError)
+        // Continue without code - course is still created
+      }
 
       // Add to local state
-      setCourses(prev => [{ ...data, enrollment_count: 0 }, ...prev])
+      setCourses(prev => [{ ...courseData, enrollment_count: 0 }, ...prev])
       setNewCourse({ title: '', description: '' })
       setShowCreateForm(false)
     } catch (error) {
