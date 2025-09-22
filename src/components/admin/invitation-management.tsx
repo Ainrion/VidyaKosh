@@ -254,7 +254,7 @@ export default function InvitationManagement() {
               </Button>
             </DialogTrigger>
           </Dialog>
-          <Button 
+          {/* <Button 
             variant="outline" 
             onClick={async () => {
               try {
@@ -282,8 +282,8 @@ export default function InvitationManagement() {
             }}
           >
             Debug System
-          </Button>
-          <Button 
+          </Button> */}
+          {/* <Button 
             variant="outline" 
             onClick={async () => {
               try {
@@ -313,7 +313,7 @@ export default function InvitationManagement() {
             }}
           >
             Test Creation
-          </Button>
+          </Button> */}
         </div>
       </div>
 

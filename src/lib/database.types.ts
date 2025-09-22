@@ -9,6 +9,7 @@ export interface Database {
           phone: string | null
           email: string | null
           logo_url: string | null
+          school_code: string | null
           created_at: string
         }
         Insert: {
@@ -18,6 +19,7 @@ export interface Database {
           phone?: string | null
           email?: string | null
           logo_url?: string | null
+          school_code?: string | null
           created_at?: string
         }
         Update: {
@@ -27,6 +29,7 @@ export interface Database {
           phone?: string | null
           email?: string | null
           logo_url?: string | null
+          school_code?: string | null
           created_at?: string
         }
       }

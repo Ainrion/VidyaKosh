@@ -56,7 +56,7 @@ const navigation = {
     { name: 'Exams', href: '/exams', icon: ClipboardList },
     { name: 'Assignments', href: '/assignments', icon: PenTool },
     { name: 'Calendar', href: '/calendar', icon: Calendar },
-    { name: 'Students', href: '/students', icon: Users },
+    { name: 'Students', href: '/users', icon: Users },
     { name: 'Messages', href: '/messages', icon: MessageSquare },
     { name: 'Blackboard', href: '/blackboard', icon: FileText },
     { name: 'Profile', href: '/profile', icon: User },

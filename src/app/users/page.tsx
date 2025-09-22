@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Search, Users, UserCheck, UserX, MoreVertical } from 'lucide-react'
+import { Plus, Search, Users, UserCheck, UserX, MoreVertical, Mail } from 'lucide-react'
 import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
@@ -48,7 +48,7 @@ export default function UsersPage() {
   }, [profile?.school_id, supabase])
 
   useEffect(() => {
-    if (profile?.role === 'admin') {
+    if (profile?.role === 'admin' || profile?.role === 'teacher') {
       fetchUsers()
     }
   }, [profile, fetchUsers])
@@ -88,7 +88,7 @@ export default function UsersPage() {
     }
   }
 
-  if (profile?.role !== 'admin') {
+  if (profile?.role !== 'admin' && profile?.role !== 'teacher') {
     return (
       <div className="p-6">
           <Card>
@@ -96,7 +96,7 @@ export default function UsersPage() {
               <Users className="h-12 w-12 text-gray-400 mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
               <p className="text-gray-500 text-center">
-                Only administrators can access user management.
+                Only administrators and teachers can access user management.
               </p>
             </CardContent>
           </Card>
@@ -121,13 +121,22 @@ export default function UsersPage() {
     <div className="p-6">
         <div className="flex justify-between items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">User Management</h1>
-            <p className="text-gray-600 mt-1">Manage teachers, students, and administrators</p>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {profile?.role === 'teacher' ? 'Student Management' : 'User Management'}
+            </h1>
+            <p className="text-gray-600 mt-1">
+              {profile?.role === 'teacher' 
+                ? 'View and manage your students' 
+                : 'Manage teachers, students, and administrators'
+              }
+            </p>
           </div>
-          <Button onClick={() => setShowAddForm(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add User
-          </Button>
+          {profile?.role === 'admin' && (
+            <Button onClick={() => setShowAddForm(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add User
+            </Button>
+          )}
         </div>
 
         {showAddForm && (
@@ -195,28 +204,41 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <Tabs defaultValue="all" className="space-y-4">
+        <Tabs defaultValue={profile?.role === 'teacher' ? 'student' : 'all'} className="space-y-4">
           <TabsList>
-            <TabsTrigger value="all">All Users ({filteredUsers.length})</TabsTrigger>
-            <TabsTrigger value="admin">Admins ({usersByRole.admin.length})</TabsTrigger>
-            <TabsTrigger value="teacher">Teachers ({usersByRole.teacher.length})</TabsTrigger>
+            {profile?.role === 'admin' && (
+              <>
+                <TabsTrigger value="all">All Users ({filteredUsers.length})</TabsTrigger>
+                <TabsTrigger value="admin">Admins ({usersByRole.admin.length})</TabsTrigger>
+                <TabsTrigger value="teacher">Teachers ({usersByRole.teacher.length})</TabsTrigger>
+              </>
+            )}
             <TabsTrigger value="student">Students ({usersByRole.student.length})</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="all">
-            <UsersList users={filteredUsers} onToggleStatus={toggleUserStatus} getRoleBadgeColor={getRoleBadgeColor} />
-          </TabsContent>
+          {profile?.role === 'admin' && (
+            <>
+              <TabsContent value="all">
+                <UsersList users={filteredUsers} onToggleStatus={toggleUserStatus} getRoleBadgeColor={getRoleBadgeColor} />
+              </TabsContent>
 
-          <TabsContent value="admin">
-            <UsersList users={usersByRole.admin} onToggleStatus={toggleUserStatus} getRoleBadgeColor={getRoleBadgeColor} />
-          </TabsContent>
+              <TabsContent value="admin">
+                <UsersList users={usersByRole.admin} onToggleStatus={toggleUserStatus} getRoleBadgeColor={getRoleBadgeColor} />
+              </TabsContent>
 
-          <TabsContent value="teacher">
-            <UsersList users={usersByRole.teacher} onToggleStatus={toggleUserStatus} getRoleBadgeColor={getRoleBadgeColor} />
-          </TabsContent>
+              <TabsContent value="teacher">
+                <UsersList users={usersByRole.teacher} onToggleStatus={toggleUserStatus} getRoleBadgeColor={getRoleBadgeColor} />
+              </TabsContent>
+            </>
+          )}
 
           <TabsContent value="student">
-            <UsersList users={usersByRole.student} onToggleStatus={toggleUserStatus} getRoleBadgeColor={getRoleBadgeColor} />
+            <UsersList 
+              users={usersByRole.student} 
+              onToggleStatus={profile?.role === 'admin' ? toggleUserStatus : undefined} 
+              getRoleBadgeColor={getRoleBadgeColor}
+              isTeacherView={profile?.role === 'teacher'}
+            />
           </TabsContent>
         </Tabs>
       </div>  )
@@ -225,11 +247,13 @@ export default function UsersPage() {
 function UsersList({ 
   users, 
   onToggleStatus, 
-  getRoleBadgeColor 
+  getRoleBadgeColor,
+  isTeacherView = false
 }: { 
   users: Profile[]
-  onToggleStatus: (userId: string, currentStatus: boolean) => void
+  onToggleStatus?: (userId: string, currentStatus: boolean) => void
   getRoleBadgeColor: (role: string) => string
+  isTeacherView?: boolean
 }) {
   if (users.length === 0) {
     return (
@@ -274,24 +298,33 @@ function UsersList({
             </div>
             
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onToggleStatus(user.id, user.is_active)}
-                className="gap-1"
-              >
-                {user.is_active ? (
-                  <>
-                    <UserX className="h-3 w-3" />
-                    Deactivate
-                  </>
-                ) : (
-                  <>
-                    <UserCheck className="h-3 w-3" />
-                    Activate
-                  </>
-                )}
-              </Button>
+              {!isTeacherView && onToggleStatus && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onToggleStatus(user.id, user.is_active)}
+                  className="gap-1"
+                >
+                  {user.is_active ? (
+                    <>
+                      <UserX className="h-3 w-3" />
+                      Deactivate
+                    </>
+                  ) : (
+                    <>
+                      <UserCheck className="h-3 w-3" />
+                      Activate
+                    </>
+                  )}
+                </Button>
+              )}
+              
+              {isTeacherView && (
+                <Button size="sm" variant="outline">
+                  <Mail className="h-4 w-4 mr-2" />
+                  Message
+                </Button>
+              )}
               
               <Button size="sm" variant="ghost">
                 <MoreVertical className="h-4 w-4" />

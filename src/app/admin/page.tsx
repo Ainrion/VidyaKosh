@@ -378,8 +378,10 @@ export default function AdminPage() {
                           variant="outline"
                           className="border-blue-600 text-blue-600 hover:bg-blue-100"
                           onClick={() => {
-                            navigator.clipboard.writeText(school.school_code)
-                            // You can add a toast notification here if needed
+                            if (school.school_code) {
+                              navigator.clipboard.writeText(school.school_code)
+                              // You can add a toast notification here if needed
+                            }
                           }}
                         >
                           <Copy className="h-4 w-4 mr-1" />
