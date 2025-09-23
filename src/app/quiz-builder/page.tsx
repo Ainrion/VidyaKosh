@@ -20,9 +20,13 @@ import { toast } from 'sonner'
 interface Course {
   id: string
   title: string
-  description: string
+  description: string | null
   student_count: number
+  quiz_count: number
   created_at: string
+  school_id: string
+  created_by: string | null
+  archived: boolean
 }
 
 export default function QuizBuilderPage() {
@@ -33,33 +37,30 @@ export default function QuizBuilderPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Mock data for demonstration
-    const mockCourses: Course[] = [
-      {
-        id: '1',
-        title: 'Mathematics 101',
-        description: 'Introduction to basic mathematical concepts',
-        student_count: 25,
-        created_at: new Date(Date.now() - 86400000).toISOString()
-      },
-      {
-        id: '2',
-        title: 'Physics Fundamentals',
-        description: 'Basic principles of physics and mechanics',
-        student_count: 20,
-        created_at: new Date(Date.now() - 172800000).toISOString()
-      },
-      {
-        id: '3',
-        title: 'Computer Science Basics',
-        description: 'Introduction to programming and computer science',
-        student_count: 30,
-        created_at: new Date(Date.now() - 259200000).toISOString()
+    fetchCourses()
+  }, [profile])
+
+  const fetchCourses = async () => {
+    if (!profile) {
+      setLoading(false)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/courses')
+      if (!response.ok) {
+        throw new Error('Failed to fetch courses')
       }
-    ]
-    setCourses(mockCourses)
-    setLoading(false)
-  }, [])
+      
+      const data = await response.json()
+      setCourses(data.courses || [])
+    } catch (error) {
+      console.error('Error fetching courses:', error)
+      setCourses([])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleCreateQuiz = () => {
     if (!selectedCourse) {
@@ -72,7 +73,10 @@ export default function QuizBuilderPage() {
   const handleQuizSaved = (quiz: any) => {
     toast.success('Quiz created successfully!')
     setShowQuizBuilder(false)
-    // Here you could redirect to the quiz or show a success message
+    // Redirect to the course page to see the created quiz
+    if (selectedCourse) {
+      window.location.href = `/courses/${selectedCourse}`
+    }
   }
 
   if (!profile || (profile.role !== 'admin' && profile.role !== 'teacher')) {
@@ -129,19 +133,35 @@ export default function QuizBuilderPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Choose a course to create quiz for:</label>
-                <Select value={selectedCourse} onValueChange={setSelectedCourse}>
+                <Select value={selectedCourse} onValueChange={setSelectedCourse} disabled={loading}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a course" />
+                    <SelectValue placeholder={loading ? "Loading courses..." : "Select a course"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {courses.map((course) => (
-                      <SelectItem key={course.id} value={course.id}>
+                    {loading ? (
+                      <SelectItem value="loading" disabled>
                         <div className="flex items-center gap-2">
-                          <BookOpen className="h-4 w-4" />
-                          <span>{course.title}</span>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                          <span>Loading courses...</span>
                         </div>
                       </SelectItem>
-                    ))}
+                    ) : courses.length === 0 ? (
+                      <SelectItem value="no-courses" disabled>
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="h-4 w-4" />
+                          <span>No courses available</span>
+                        </div>
+                      </SelectItem>
+                    ) : (
+                      courses.map((course) => (
+                        <SelectItem key={course.id} value={course.id}>
+                          <div className="flex items-center gap-2">
+                            <BookOpen className="h-4 w-4" />
+                            <span>{course.title}</span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>
@@ -171,7 +191,7 @@ export default function QuizBuilderPage() {
                 if (!course) return null
                 
                 return (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
                       <BookOpen className="h-8 w-8 text-blue-500" />
                       <div>
@@ -185,6 +205,14 @@ export default function QuizBuilderPage() {
                       <div>
                         <p className="text-sm text-gray-600">Enrolled Students</p>
                         <p className="font-semibold">{course.student_count}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-3 p-4 bg-orange-50 rounded-lg">
+                      <Target className="h-8 w-8 text-orange-500" />
+                      <div>
+                        <p className="text-sm text-gray-600">Existing Quizzes</p>
+                        <p className="font-semibold">{course.quiz_count}</p>
                       </div>
                     </div>
                     
@@ -247,6 +275,20 @@ export default function QuizBuilderPage() {
                   {courses.reduce((sum, course) => sum + course.student_count, 0)}
                 </p>
                 <p className="text-sm text-gray-600">Total Students</p>
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="p-6">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
+                <Target className="h-6 w-6 text-orange-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">
+                  {courses.reduce((sum, course) => sum + course.quiz_count, 0)}
+                </p>
+                <p className="text-sm text-gray-600">Total Quizzes</p>
               </div>
             </div>
           </Card>

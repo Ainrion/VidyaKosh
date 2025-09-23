@@ -149,20 +149,48 @@ export function QuizBuilder({ courseId, onQuizSaved }: QuizBuilderProps) {
 
     setSaving(true)
     try {
-      // Here you would implement the actual save logic
-      const quiz = {
-        id: `quiz_${Date.now()}`,
+      console.log('Saving quiz with data:', {
         title: quizTitle,
         description: quizDescription,
         course_id: courseId,
-        questions: questions,
-        created_at: new Date().toISOString()
+        questions: questions
+      })
+
+      // Save quiz to database
+      const response = await fetch('/api/quizzes', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: quizTitle,
+          description: quizDescription,
+          course_id: courseId,
+          questions: questions
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save quiz')
       }
 
-      onQuizSaved?.(quiz)
+      const data = await response.json()
+      console.log('Quiz saved successfully:', data)
+
+      // Call the callback with the saved quiz
+      onQuizSaved?.(data.quiz)
       toast.success('Quiz saved successfully!')
+      
+      // Reset form
+      setQuizTitle('')
+      setQuizDescription('')
+      setQuestions([])
+      setEditingQuestion(null)
+      
     } catch (error) {
-      toast.error('Failed to save quiz')
+      console.error('Error saving quiz:', error)
+      toast.error(`Failed to save quiz: ${error instanceof Error ? error.message : 'Unknown error'}`)
     } finally {
       setSaving(false)
     }

@@ -35,6 +35,7 @@ export default function CoursesPage() {
     title: '',
     description: ''
   })
+  const [isCreating, setIsCreating] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -94,22 +95,44 @@ export default function CoursesPage() {
   const createCourse = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!profile?.school_id || !newCourse.title.trim()) return
+    if (!profile?.school_id || !newCourse.title.trim()) {
+      alert('Please fill in the course title')
+      return
+    }
 
+    if (!profile?.id) {
+      alert('User profile not found. Please try logging in again.')
+      return
+    }
+
+    setIsCreating(true)
     try {
+      console.log('Creating course with data:', {
+        title: newCourse.title.trim(),
+        description: newCourse.description.trim(),
+        school_id: profile.school_id,
+        created_by: profile.id
+      })
+
       // Create the course
       const { data: courseData, error: courseError } = await supabase
         .from('courses')
         .insert({
           title: newCourse.title.trim(),
-          description: newCourse.description.trim(),
+          description: newCourse.description.trim() || null,
           school_id: profile.school_id,
           created_by: profile.id
         })
         .select()
         .single()
 
-      if (courseError) throw courseError
+      if (courseError) {
+        console.error('Course creation error:', courseError)
+        alert(`Failed to create course: ${courseError.message}`)
+        return
+      }
+
+      console.log('Course created successfully:', courseData)
 
       // Generate enrollment code for the course
       try {
@@ -144,12 +167,22 @@ export default function CoursesPage() {
         // Continue without code - course is still created
       }
 
-      // Add to local state
+      // Add to local state and refresh the list
       setCourses(prev => [{ ...courseData, enrollment_count: 0 }, ...prev])
       setNewCourse({ title: '', description: '' })
       setShowCreateForm(false)
+      
+      // Show success message
+      alert('Course created successfully!')
+      
+      // Refresh the courses list to ensure we have the latest data
+      await fetchCourses()
+      
     } catch (error) {
       console.error('Error creating course:', error)
+      alert(`Failed to create course: ${error instanceof Error ? error.message : 'Unknown error'}`)
+    } finally {
+      setIsCreating(false)
     }
   }
 
@@ -283,15 +316,24 @@ export default function CoursesPage() {
                         <div className="flex gap-3 pt-4">
                           <Button 
                             type="submit"
-                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-2 rounded-lg transition-all duration-300"
+                            disabled={isCreating}
+                            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6 py-2 rounded-lg transition-all duration-300 disabled:opacity-50"
                           >
-                            Create Course
+                            {isCreating ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                Creating...
+                              </>
+                            ) : (
+                              'Create Course'
+                            )}
                           </Button>
                           <Button 
                             type="button" 
                             variant="outline" 
                             onClick={() => setShowCreateForm(false)}
-                            className="border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2 rounded-lg transition-all duration-300"
+                            disabled={isCreating}
+                            className="border-gray-300 text-gray-700 hover:bg-gray-50 px-6 py-2 rounded-lg transition-all duration-300 disabled:opacity-50"
                           >
                             Cancel
                           </Button>

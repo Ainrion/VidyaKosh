@@ -34,7 +34,9 @@ export async function GET(request: NextRequest) {
         school_id,
         created_by,
         created_at,
-        archived
+        archived,
+        enrollments(count),
+        quizzes(count)
       `)
       .eq('archived', false)
       .order('created_at', { ascending: false })
@@ -75,9 +77,16 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch courses' }, { status: 500 })
     }
 
+    // Transform courses to include enrollment count
+    const coursesWithCount = courses?.map(course => ({
+      ...course,
+      student_count: Array.isArray(course.enrollments) ? course.enrollments.length : 0,
+      quiz_count: Array.isArray(course.quizzes) ? course.quizzes.length : 0
+    })) || []
+
     return NextResponse.json({ 
-      courses: courses || [],
-      total: courses?.length || 0
+      courses: coursesWithCount,
+      total: coursesWithCount.length
     })
   } catch (error) {
     console.error('Error in courses GET:', error)
