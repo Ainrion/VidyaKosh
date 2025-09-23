@@ -33,6 +33,8 @@ import { createClient } from '@/lib/supabase/client'
 import { Database } from '@/lib/database.types'
 import { useRouter, useParams } from 'next/navigation'
 import { FileUpload } from '@/components/ui/file-upload'
+import { QuizDetailView } from '@/components/quiz/quiz-detail-view'
+import { toast } from 'sonner'
 
 type Course = Database['public']['Tables']['courses']['Row'] & {
   created_by_profile?: {
@@ -55,6 +57,8 @@ export default function CourseDetailsPage() {
   const [course, setCourse] = useState<Course | null>(null)
   const [enrollments, setEnrollments] = useState<Enrollment[]>([])
   const [assignments, setAssignments] = useState<Assignment[]>([])
+  const [quizzes, setQuizzes] = useState<any[]>([])
+  const [selectedQuiz, setSelectedQuiz] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [isEnrolled, setIsEnrolled] = useState(false)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
@@ -133,6 +137,56 @@ export default function CourseDetailsPage() {
       setLoading(false)
     }
   }, [courseId, supabase])
+
+  const fetchQuizzes = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/quizzes?courseId=${courseId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setQuizzes(data.quizzes || [])
+      }
+    } catch (error) {
+      console.error('Error fetching quizzes:', error)
+    }
+  }, [courseId])
+
+  const handleQuizClick = (quiz: any) => {
+    setSelectedQuiz(quiz)
+  }
+
+  const handleQuizEdit = (quiz: any) => {
+    // Navigate to quiz builder with the quiz data for editing
+    router.push(`/quiz-builder?edit=${quiz.id}`)
+  }
+
+  const handleQuizDelete = async (quizId: string) => {
+    if (!confirm('Are you sure you want to delete this quiz? This action cannot be undone.')) {
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/quizzes/${quizId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        // Remove quiz from local state
+        setQuizzes(prev => prev.filter(q => q.id !== quizId))
+        setSelectedQuiz(null)
+        toast.success('Quiz deleted successfully')
+      } else {
+        throw new Error('Failed to delete quiz')
+      }
+    } catch (error) {
+      console.error('Error deleting quiz:', error)
+      toast.error('Failed to delete quiz')
+    }
+  }
+
+  const handleTakeQuiz = (quiz: any) => {
+    // Navigate to quiz taking page
+    window.location.href = `/quiz/${quiz.id}/take`
+  }
 
   const checkEnrollment = useCallback(async () => {
     if (profile?.role !== 'student') return
@@ -313,10 +367,11 @@ export default function CourseDetailsPage() {
       fetchCourseDetails()
       fetchEnrollments()
       fetchAssignments()
+      fetchQuizzes()
       checkEnrollment()
       fetchEnrollmentCode()
     }
-  }, [courseId, profile?.school_id, fetchCourseDetails, fetchEnrollments, fetchAssignments, checkEnrollment, fetchEnrollmentCode])
+  }, [courseId, profile?.school_id, fetchCourseDetails, fetchEnrollments, fetchAssignments, fetchQuizzes, checkEnrollment, fetchEnrollmentCode])
 
   if (loading) {
     return (
@@ -503,6 +558,7 @@ export default function CourseDetailsPage() {
         <Tabs defaultValue="assignments" className="space-y-4">
           <TabsList>
             <TabsTrigger value="assignments">Assignments</TabsTrigger>
+            <TabsTrigger value="quizzes">Quizzes</TabsTrigger>
             <TabsTrigger value="students">Students</TabsTrigger>
             {canManageCourse && (
               <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -645,6 +701,98 @@ export default function CourseDetailsPage() {
                   </Card>
                 ))}
               </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="quizzes" className="space-y-4">
+            {selectedQuiz ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedQuiz(null)}
+                    className="flex items-center gap-2"
+                  >
+                    ← Back to Quizzes
+                  </Button>
+                  <h3 className="text-lg font-medium">Quiz Details</h3>
+                </div>
+                <QuizDetailView
+                  quiz={selectedQuiz}
+                  onEdit={handleQuizEdit}
+                  onDelete={handleQuizDelete}
+                  onTakeQuiz={handleTakeQuiz}
+                  canManage={canManageCourse}
+                  userRole={profile?.role || 'student'}
+                />
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between items-center">
+                  <h3 className="text-lg font-medium">Quizzes</h3>
+                  {canManageCourse && (
+                    <Button onClick={() => router.push('/quiz-builder')}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create Quiz
+                    </Button>
+                  )}
+                </div>
+                
+                {quizzes.length === 0 ? (
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-12">
+                      <FileText className="h-12 w-12 text-gray-400 mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No quizzes yet</h3>
+                      <p className="text-gray-500 text-center mb-4">
+                        {canManageCourse 
+                          ? 'Create your first quiz to start assessing your students.'
+                          : 'No quizzes have been created for this course yet.'
+                        }
+                      </p>
+                      {canManageCourse && (
+                        <Button onClick={() => router.push('/quiz-builder')}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Create Quiz
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {quizzes.map((quiz) => (
+                      <Card 
+                        key={quiz.id} 
+                        className="hover:shadow-md transition-shadow cursor-pointer"
+                        onClick={() => handleQuizClick(quiz)}
+                      >
+                        <CardHeader>
+                          <CardTitle className="text-lg">{quiz.title}</CardTitle>
+                          {quiz.description && (
+                            <CardDescription className="line-clamp-2">
+                              {quiz.description}
+                            </CardDescription>
+                          )}
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm text-gray-500">
+                              <span>Created {new Date(quiz.created_at).toLocaleDateString()}</span>
+                              <Badge variant="secondary">Quiz</Badge>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span className="flex items-center gap-1">
+                                <FileText className="h-3 w-3" />
+                                {quiz.quiz_questions?.length || 0} questions
+                              </span>
+                              <span>Click to view details</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </TabsContent>
 
