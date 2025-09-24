@@ -96,7 +96,15 @@ export default function AdminPage() {
           .eq('id', profile.school_id)
           .single()
 
-        if (schoolError) throw schoolError
+        if (schoolError) {
+          console.error('Error fetching school data:', schoolError)
+          if (schoolError.code === 'PGRST116') {
+            // School doesn't exist
+            setSchool(null)
+            return
+          }
+          throw schoolError
+        }
         setSchool(schoolData)
       }
 

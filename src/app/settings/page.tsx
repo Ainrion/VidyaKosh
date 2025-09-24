@@ -48,14 +48,25 @@ export default function SettingsPage() {
           .eq('id', profile.school_id)
           .single()
 
-        if (schoolError) throw schoolError
-        setSchool(schoolData)
-        setSchoolData({
-          name: schoolData.name || '',
-          address: schoolData.address || '',
-          phone: schoolData.phone || '',
-          email: schoolData.email || ''
-        })
+        if (schoolError) {
+          console.error('Error fetching school data:', schoolError)
+          if (schoolError.code === 'PGRST116') {
+            // School doesn't exist
+            console.warn('School not found for profile')
+            return
+          }
+          throw schoolError
+        }
+        
+        if (schoolData) {
+          setSchool(schoolData)
+          setSchoolData({
+            name: schoolData.name || '',
+            address: schoolData.address || '',
+            phone: schoolData.phone || '',
+            email: schoolData.email || ''
+          })
+        }
       }
 
       // Set profile data

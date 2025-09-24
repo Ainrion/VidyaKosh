@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, Trash2, Save, Clock, Users } from 'lucide-react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { ExamQuestionFileUpload } from '@/components/ui/exam-question-file-upload'
 
 interface Course {
   id: string
@@ -48,6 +49,10 @@ interface ExamQuestion {
   }
   word_limit?: number
   rich_text_enabled?: boolean
+  file_path?: string
+  file_name?: string
+  file_size?: number
+  mime_type?: string
 }
 
 export default function ExamsPage() {
@@ -76,15 +81,26 @@ export default function ExamsPage() {
 
   const fetchCourses = useCallback(async () => {
     try {
-      if (!profile) {
-        console.log('No profile found, skipping courses fetch')
+      if (!profile || !profile.school_id) {
+        console.log('No profile or school_id found, skipping courses fetch')
         return
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('courses')
         .select('id, title')
+        .eq('school_id', profile.school_id)
+        .eq('archived', false)
         .order('title')
+
+      // Filter based on user role
+      if (profile.role === 'teacher') {
+        // Teachers can only see their own courses
+        query = query.eq('created_by', profile.id)
+      }
+      // Admins can see all courses in their school (already filtered by school_id above)
+
+      const { data, error } = await query
 
       if (error) {
         console.error('Error fetching courses:', error)
@@ -103,19 +119,29 @@ export default function ExamsPage() {
     try {
       setLoading(true)
       
-      // First check if the user has permission
-      if (!profile) {
-        console.log('No profile found, skipping exam fetch')
+      // First check if the user has permission and school_id
+      if (!profile || !profile.school_id) {
+        console.log('No profile or school_id found, skipping exam fetch')
         return
       }
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('exams')
         .select(`
           *,
-          courses (title)
+          courses (title, school_id)
         `)
+        .eq('school_id', profile.school_id) // Filter by school_id for multi-tenant isolation
         .order('created_at', { ascending: false })
+
+      // Filter based on user role (maintaining school isolation)
+      if (profile.role === 'teacher') {
+        // Teachers can only see their own exams within their school
+        query = query.eq('created_by', profile.id)
+      }
+      // Admins can see all exams in their school (already filtered by school_id above)
+
+      const { data, error } = await query
 
       if (error) {
         console.error('Supabase error:', error)
@@ -123,7 +149,7 @@ export default function ExamsPage() {
         return
       }
       
-      console.log('Fetched exams:', data)
+      console.log('Fetched exams for school:', profile.school_id, data)
       setExams(data || [])
     } catch (error) {
       console.error('Error fetching exams:', error)
@@ -193,11 +219,15 @@ export default function ExamsPage() {
         return
       }
 
-      // Save exam
+      // Save exam - handle empty timestamps
       const examData = {
         ...examForm,
+        start_time: examForm.start_time && examForm.start_time.trim() !== '' ? examForm.start_time : null,
+        end_time: examForm.end_time && examForm.end_time.trim() !== '' ? examForm.end_time : null,
         created_by: profile?.id
       }
+
+      console.log('Saving exam with data:', examData)
 
       let examId: string
 
@@ -240,7 +270,11 @@ export default function ExamsPage() {
           order_index: index,
           file_requirements: q.file_requirements || null,
           word_limit: q.word_limit || null,
-          rich_text_enabled: q.rich_text_enabled || false
+          rich_text_enabled: q.rich_text_enabled || false,
+          file_path: q.file_path || null,
+          file_name: q.file_name || null,
+          file_size: q.file_size || null,
+          mime_type: q.mime_type || null
         }))
 
         const { error: questionsError } = await supabase
@@ -257,7 +291,8 @@ export default function ExamsPage() {
       fetchExams()
     } catch (error) {
       console.error('Error saving exam:', error)
-      toast.error('Failed to save exam')
+      console.error('Error details:', JSON.stringify(error, null, 2))
+      toast.error(`Failed to save exam: ${error.message || 'Unknown error'}`)
     }
   }
 
@@ -297,8 +332,8 @@ export default function ExamsPage() {
         title: examData.title,
         description: examData.description || '',
         duration_minutes: examData.duration_minutes,
-        start_time: examData.start_time || '',
-        end_time: examData.end_time || '',
+        start_time: examData.start_time ? new Date(examData.start_time).toISOString().slice(0, 16) : '',
+        end_time: examData.end_time ? new Date(examData.end_time).toISOString().slice(0, 16) : '',
         course_id: examData.course_id
       })
 
@@ -465,11 +500,51 @@ export default function ExamsPage() {
                       </Button>
                     </div>
 
-                    <Textarea
-                      value={question.question_text}
-                      onChange={(e) => updateQuestion(index, 'question_text', e.target.value)}
-                      placeholder="Enter question text"
-                    />
+                    {/* Question input - show different UI based on question type */}
+                    {question.question_type === 'file_upload' ? (
+                      <div className="space-y-4">
+                        <Label>Question File</Label>
+                        <ExamQuestionFileUpload
+                          examId={editingExam?.id || `temp-exam-${Date.now()}`}
+                          questionId={question.id || `temp-${index}`}
+                          onFileSelect={(file) => {
+                            // Update question with file info for preview
+                            updateQuestion(index, 'question_text', file.name)
+                            updateQuestion(index, 'file_name', file.name)
+                            updateQuestion(index, 'file_size', file.size)
+                            updateQuestion(index, 'mime_type', file.type)
+                          }}
+                          onFileUpload={(fileData) => {
+                            // Update question with uploaded file data
+                            updateQuestion(index, 'question_text', fileData.url || fileData.name)
+                            updateQuestion(index, 'file_name', fileData.name)
+                            updateQuestion(index, 'file_size', fileData.size)
+                            updateQuestion(index, 'mime_type', fileData.type)
+                            updateQuestion(index, 'file_path', fileData.path)
+                          }}
+                          onFileRemove={() => {
+                            updateQuestion(index, 'question_text', '')
+                            updateQuestion(index, 'file_name', '')
+                            updateQuestion(index, 'file_size', 0)
+                            updateQuestion(index, 'mime_type', '')
+                            updateQuestion(index, 'file_path', '')
+                          }}
+                          existingFile={question.file_name ? {
+                            name: question.file_name,
+                            size: question.file_size || 0,
+                            url: question.question_text,
+                            type: question.mime_type
+                          } : undefined}
+                          placeholder="Upload a file containing the question (PDF, DOC, DOCX, TXT, XML, JPG, PNG)"
+                        />
+                      </div>
+                    ) : (
+                      <Textarea
+                        value={question.question_text}
+                        onChange={(e) => updateQuestion(index, 'question_text', e.target.value)}
+                        placeholder="Enter question text"
+                      />
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
