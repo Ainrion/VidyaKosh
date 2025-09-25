@@ -6,6 +6,8 @@ import {
   getFileMetadata,
   generateExamQuestionFilePath,
   generateExamAnswerFilePath,
+  generateAssignmentFilePath,
+  generateAssignmentSubmissionFilePath,
   validateFile,
   FILE_UPLOAD_CONFIG 
 } from './wasabi'

@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Multi-tenant isolation: ensure student belongs to the same school as the exam
-    const examSchoolId = sessionData.exams?.school_id
+    const examSchoolId = sessionData.exams?.[0]?.school_id
     if (!examSchoolId || profile.school_id !== examSchoolId) {
       return NextResponse.json({ error: 'Unauthorized: Exam belongs to a different school' }, { status: 403 })
     }

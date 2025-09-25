@@ -124,7 +124,7 @@ export async function DELETE(request: NextRequest) {
     } catch (deleteError) {
       console.error('Wasabi delete error:', deleteError)
       // Don't fail if file doesn't exist
-      if (deleteError.message?.includes('NoSuchKey')) {
+      if (deleteError instanceof Error && deleteError.message?.includes('NoSuchKey')) {
         console.log('File not found in Wasabi, continuing with cleanup')
       } else {
         throw deleteError

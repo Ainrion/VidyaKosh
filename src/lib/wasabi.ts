@@ -45,7 +45,7 @@ export const WASABI_BUCKET = wasabiConfig.bucketName
 try {
   validateWasabiConfig()
 } catch (error) {
-  console.warn('Wasabi configuration warning:', error.message)
+  console.warn('Wasabi configuration warning:', error instanceof Error ? error.message : 'Unknown error')
 }
 
 // File upload configuration
@@ -180,17 +180,19 @@ export async function uploadFileToWasabi(
     console.error('Wasabi upload error:', error)
     
     // Provide more specific error messages
-    if (error.code === 'NoSuchBucket') {
-      throw new Error('Wasabi bucket does not exist. Please create the bucket first.')
-    } else if (error.code === 'InvalidAccessKeyId') {
-      throw new Error('Invalid Wasabi access key. Please check your credentials.')
-    } else if (error.code === 'SignatureDoesNotMatch') {
-      throw new Error('Wasabi signature mismatch. Please check your secret key.')
-    } else if (error.code === 'RequestTimeout') {
-      throw new Error('Upload timeout. Please try again or check your connection.')
-    } else {
-      throw new Error(`Failed to upload file to Wasabi: ${error.message || 'Unknown error'}`)
+    if (error instanceof Error && 'code' in error) {
+      const errorCode = (error as any).code
+      if (errorCode === 'NoSuchBucket') {
+        throw new Error('Wasabi bucket does not exist. Please create the bucket first.')
+      } else if (errorCode === 'InvalidAccessKeyId') {
+        throw new Error('Invalid Wasabi access key. Please check your credentials.')
+      } else if (errorCode === 'SignatureDoesNotMatch') {
+        throw new Error('Wasabi signature mismatch. Please check your secret key.')
+      } else if (errorCode === 'RequestTimeout') {
+        throw new Error('Upload timeout. Please try again or check your connection.')
+      }
     }
+    throw new Error(`Failed to upload file to Wasabi: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }
 
@@ -211,12 +213,12 @@ export async function deleteFileFromWasabi(key: string): Promise<void> {
     console.error('Wasabi delete error:', error)
     
     // Don't throw error for non-existent files
-    if (error.code === 'NoSuchKey') {
+    if (error instanceof Error && 'code' in error && (error as any).code === 'NoSuchKey') {
       console.log(`File not found in Wasabi: ${key}`)
       return
     }
     
-    throw new Error(`Failed to delete file from Wasabi: ${error.message || 'Unknown error'}`)
+    throw new Error(`Failed to delete file from Wasabi: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }
 
@@ -233,7 +235,10 @@ export async function fileExistsInWasabi(key: string): Promise<boolean> {
     await wasabiS3.headObject(params).promise()
     return true
   } catch (error) {
-    if (error.code === 'NotFound' || error.statusCode === 404) {
+    if (error instanceof Error && 'code' in error && (error as any).code === 'NotFound') {
+      return false
+    }
+    if (error instanceof Error && 'statusCode' in error && (error as any).statusCode === 404) {
       return false
     }
     throw error
@@ -265,7 +270,7 @@ export async function getFileMetadata(key: string): Promise<{
     }
   } catch (error) {
     console.error('Error getting file metadata:', error)
-    throw new Error(`Failed to get file metadata: ${error.message || 'Unknown error'}`)
+    throw new Error(`Failed to get file metadata: ${error instanceof Error ? error.message : 'Unknown error'}`)
   }
 }
 

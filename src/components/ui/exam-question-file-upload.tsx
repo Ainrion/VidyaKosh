@@ -231,7 +231,7 @@ export function ExamQuestionFileUpload({
   }, [existingFile?.url, existingFile?.type])
 
   const handleDelete = useCallback(async () => {
-    if (!existingFile?.path || !examId || !questionId) return
+    if (!existingFile?.url || !examId || !questionId) return
 
     try {
       const response = await fetch(`/api/exams/upload-question-file?questionId=${questionId}&examId=${examId}`, {
@@ -248,7 +248,7 @@ export function ExamQuestionFileUpload({
       console.error('Delete error:', error)
       setError('Failed to delete file')
     }
-  }, [existingFile?.path, examId, questionId, onFileRemove])
+  }, [existingFile?.url, examId, questionId, onFileRemove])
 
   // Show existing file if available
   if (existingFile && !selectedFile) {

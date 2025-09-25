@@ -61,7 +61,7 @@ export default function ExamsPage() {
   const [exams, setExams] = useState<Exam[]>([])
 
   const [showCreateForm, setShowCreateForm] = useState(false)
-  const [editingExam, setEditingExam] = useState<string | null>(null)
+  const [editingExam, setEditingExam] = useState<Exam | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Exam form state
@@ -238,7 +238,7 @@ export default function ExamsPage() {
           .eq('id', editingExam)
         
         if (error) throw error
-        examId = editingExam
+        examId = editingExam.id
       } else {
         const { data, error } = await supabase
           .from('exams')
@@ -292,7 +292,7 @@ export default function ExamsPage() {
     } catch (error) {
       console.error('Error saving exam:', error)
       console.error('Error details:', JSON.stringify(error, null, 2))
-      toast.error(`Failed to save exam: ${error.message || 'Unknown error'}`)
+      toast.error(`Failed to save exam: ${error instanceof Error ? error.message : 'Unknown error'}`)
     }
   }
 
@@ -354,7 +354,7 @@ export default function ExamsPage() {
         rich_text_enabled: q.rich_text_enabled || false
       })))
 
-      setEditingExam(examId)
+      setEditingExam(examData)
       setShowCreateForm(true)
     } catch (error) {
       console.error('Error fetching exam:', error)
