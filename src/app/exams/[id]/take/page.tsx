@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
 import { ExamTimer } from '@/components/exam-timer'
 import { FileUpload } from '@/components/ui/file-upload'
-import { AlertTriangle, CheckCircle2, Upload, File } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Upload, File, FileText } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Exam {
@@ -40,6 +40,10 @@ interface ExamQuestion {
   }
   word_limit?: number
   rich_text_enabled?: boolean
+  file_path?: string
+  file_name?: string
+  file_size?: number
+  mime_type?: string
 }
 
 interface ExamSession {
@@ -70,18 +74,34 @@ export default function TakeExamPage() {
     try {
       setLoading(true)
 
-      // Fetch exam details
+      // First check if the user has permission and school_id
+      if (!profile || !profile.school_id) {
+        toast.error('Access denied: No school access')
+        router.push('/courses')
+        return
+      }
+
+      // Fetch exam details with school_id filtering
       const { data: examData, error: examError } = await supabase
         .from('exams')
         .select(`
           *,
-          courses (title)
+          courses (title, school_id)
         `)
         .eq('id', examId)
         .eq('is_published', true)
+        .eq('school_id', profile.school_id) // Ensure exam belongs to student's school
         .single()
 
       if (examError) throw examError
+      
+      // Additional security check: ensure the course also belongs to the same school
+      if (examData.courses?.school_id !== profile.school_id) {
+        toast.error('Access denied: Exam belongs to a different school')
+        router.push('/courses')
+        return
+      }
+      
       setExam(examData)
 
       // Check if exam is available (time window)
@@ -163,46 +183,23 @@ export default function TakeExamPage() {
   }
 
   const handleFileUpload = async (questionId: string, file: File) => {
-    if (!session) return
-
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('examSessionId', session.id)
-      formData.append('questionId', questionId)
-
-      const response = await fetch('/api/exams/upload-file', {
-        method: 'POST',
-        body: formData
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Upload failed')
-      }
-
-      // Update uploaded files state
-      setUploadedFiles(prev => ({
-        ...prev,
-        [questionId]: result.file
-      }))
-
-      // Update answer to indicate file uploaded
-      updateAnswer(questionId, `FILE_UPLOADED:${result.file.id}`)
-
-      toast.success('File uploaded successfully')
-    } catch (error) {
-      console.error('Upload error:', error)
-      toast.error(error instanceof Error ? error.message : 'Failed to upload file')
-    }
+    // File upload is now handled by the FileUpload component directly
+    // This function is kept for backward compatibility
+    console.log('File selected for upload:', file.name)
   }
 
   const handleFileRemove = async (questionId: string) => {
     if (!session || !uploadedFiles[questionId]) return
 
     try {
-      const response = await fetch(`/api/exams/upload-file?answerId=${uploadedFiles[questionId].id}`, {
+      // Get the file path from the uploaded file data
+      const filePath = uploadedFiles[questionId].path || uploadedFiles[questionId].file_path
+      
+      if (!filePath) {
+        throw new Error('File path not found')
+      }
+
+      const response = await fetch(`/api/exams/upload-file?filePath=${encodeURIComponent(filePath)}`, {
         method: 'DELETE'
       })
 
@@ -380,7 +377,28 @@ export default function TakeExamPage() {
                     <CheckCircle2 className="h-5 w-5 text-green-500" />
                   )}
                 </div>
-                <p className="text-gray-800 mb-4">{question.question_text}</p>
+                {/* Display question text or file */}
+                {question.file_name && question.question_text ? (
+                  <div className="mb-4">
+                    <p className="text-gray-800 mb-2">Question File:</p>
+                    <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                      <a 
+                        href={question.question_text} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline"
+                      >
+                        {question.file_name}
+                      </a>
+                      <span className="text-sm text-gray-500">
+                        ({(question.file_size ? question.file_size / 1024 : 0).toFixed(1)} KB)
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-gray-800 mb-4">{question.question_text}</p>
+                )}
               </div>
             </div>
 
@@ -469,12 +487,27 @@ export default function TakeExamPage() {
                   <FileUpload
                     onFileSelect={(file) => handleFileUpload(question.id, file)}
                     onFileRemove={() => handleFileRemove(question.id)}
-                    acceptedTypes={question.file_requirements?.allowed_types || ['.pdf', '.doc', '.docx']}
-                    maxSizeMB={question.file_requirements?.max_size_mb || 10}
+                    onFileUpload={(fileData) => {
+                      // Update uploaded files state with enhanced file data
+                      setUploadedFiles(prev => ({
+                        ...prev,
+                        [question.id]: fileData
+                      }))
+                      // Update answer to indicate file uploaded
+                      updateAnswer(question.id, `FILE_UPLOADED:${fileData.id}`)
+                    }}
+                    acceptedTypes={question.file_requirements?.allowed_types || ['.pdf', '.doc', '.docx', '.txt', '.xml', '.jpg', '.jpeg', '.png']}
+                    maxSizeMB={question.file_requirements?.max_size_mb || 50}
+                    uploadEndpoint="/api/exams/upload-file"
+                    uploadMetadata={{
+                      examSessionId: session?.id || '',
+                      questionId: question.id
+                    }}
                     existingFile={uploadedFiles[question.id] ? {
                       name: uploadedFiles[question.id].name,
                       size: uploadedFiles[question.id].size,
-                      url: uploadedFiles[question.id].url
+                      url: uploadedFiles[question.id].url,
+                      type: uploadedFiles[question.id].type
                     } : undefined}
                     placeholder="Upload your answer file here..."
                   />

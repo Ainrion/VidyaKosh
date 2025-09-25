@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { 
+  uploadFileToWasabi, 
+  generateExamAnswerFilePath, 
+  validateFile, 
+  deleteFileFromWasabi 
+} from '@/lib/wasabi'
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,6 +17,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    // Get user profile with school information
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, role, school_id')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError || !profile) {
+      return NextResponse.json({ error: 'User profile not found' }, { status: 404 })
+    }
+
     const formData = await request.formData()
     const file = formData.get('file') as File
     const examSessionId = formData.get('examSessionId') as string
@@ -20,22 +37,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    // Validate file type
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain']
-    if (!allowedTypes.includes(file.type)) {
-      return NextResponse.json({ error: 'File type not supported' }, { status: 400 })
-    }
-
-    // Validate file size (10MB limit)
-    const maxSize = 10 * 1024 * 1024 // 10MB
-    if (file.size > maxSize) {
-      return NextResponse.json({ error: 'File size too large' }, { status: 400 })
+    // Validate file
+    const validation = validateFile(file)
+    if (!validation.isValid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 })
     }
 
     // Check if user has permission to upload for this exam session
     const { data: sessionData, error: sessionError } = await supabase
       .from('exam_sessions')
-      .select('student_id, exam_id')
+      .select(`
+        student_id, 
+        exam_id,
+        exams (
+          school_id
+        )
+      `)
       .eq('id', examSessionId)
       .single()
 
@@ -47,28 +64,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // Generate unique filename
-    const fileExtension = file.name.split('.').pop()
-    const fileName = `${user.id}/${examSessionId}/${questionId}.${fileExtension}`
-    const filePath = `answers/${fileName}`
-
-    // Upload file to Supabase storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('exam-files')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true
-      })
-
-    if (uploadError) {
-      console.error('Upload error:', uploadError)
-      return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 })
+    // Multi-tenant isolation: ensure student belongs to the same school as the exam
+    const examSchoolId = sessionData.exams?.[0]?.school_id
+    if (!examSchoolId || profile.school_id !== examSchoolId) {
+      return NextResponse.json({ error: 'Unauthorized: Exam belongs to a different school' }, { status: 403 })
     }
 
-    // Get public URL for the file
-    const { data: urlData } = supabase.storage
-      .from('exam-files')
-      .getPublicUrl(filePath)
+    // Check if there's an existing answer file and delete it
+    const { data: existingAnswer, error: existingError } = await supabase
+      .from('exam_answers')
+      .select('file_path')
+      .eq('exam_session_id', examSessionId)
+      .eq('question_id', questionId)
+      .single()
+
+    if (existingAnswer?.file_path) {
+      try {
+        await deleteFileFromWasabi(existingAnswer.file_path)
+        console.log('Deleted existing answer file:', existingAnswer.file_path)
+      } catch (deleteError) {
+        console.warn('Failed to delete existing answer file:', deleteError)
+        // Continue with upload even if deletion fails
+      }
+    }
+
+    // Generate unique file path with school-based multi-tenant organization
+    const filePath = generateExamAnswerFilePath(user.id, examSessionId, questionId, file.name, examSchoolId)
+
+    // Convert file to buffer
+    const fileBuffer = Buffer.from(await file.arrayBuffer())
+
+    // Upload file to Wasabi with metadata including school isolation
+    const uploadResult = await uploadFileToWasabi(fileBuffer, filePath, file.type, {
+      'user-id': user.id,
+      'school-id': examSchoolId,
+      'exam-session-id': examSessionId,
+      'question-id': questionId,
+      'original-name': file.name,
+      'upload-type': 'exam-answer'
+    })
 
     // Save file info to database
     const { data: answerData, error: answerError } = await supabase
@@ -76,9 +110,9 @@ export async function POST(request: NextRequest) {
       .upsert({
         exam_session_id: examSessionId,
         question_id: questionId,
-        file_path: filePath,
+        file_path: uploadResult.key, // Store the Wasabi key
         file_name: file.name,
-        file_size: file.size,
+        file_size: uploadResult.size,
         mime_type: file.type
       }, {
         onConflict: 'exam_session_id,question_id'
@@ -88,8 +122,12 @@ export async function POST(request: NextRequest) {
 
     if (answerError) {
       console.error('Database error:', answerError)
-      // Try to clean up uploaded file
-      await supabase.storage.from('exam-files').remove([filePath])
+      // Try to clean up uploaded file from Wasabi
+      try {
+        await deleteFileFromWasabi(uploadResult.key)
+      } catch (error) {
+        console.error('Wasabi cleanup error:', error)
+      }
       return NextResponse.json({ error: 'Failed to save file info' }, { status: 500 })
     }
 
@@ -98,9 +136,10 @@ export async function POST(request: NextRequest) {
       file: {
         id: answerData.id,
         name: file.name,
-        size: file.size,
-        url: urlData.publicUrl,
-        path: filePath
+        size: uploadResult.size,
+        url: uploadResult.url,
+        path: uploadResult.key,
+        uploadedAt: new Date().toISOString()
       }
     })
 
@@ -149,13 +188,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 })
     }
 
-    // Delete file from storage
-    const { error: deleteError } = await supabase.storage
-      .from('exam-files')
-      .remove([answerData.file_path])
-
-    if (deleteError) {
-      console.error('Delete error:', deleteError)
+    // Delete file from Wasabi if it exists
+    if (answerData.file_path) {
+      try {
+        const { deleteFileFromWasabi } = await import('@/lib/wasabi')
+        await deleteFileFromWasabi(answerData.file_path)
+      } catch (error) {
+        console.error('Wasabi delete error:', error)
+        // Continue with database cleanup even if Wasabi delete fails
+      }
     }
 
     // Delete from database

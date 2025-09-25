@@ -39,6 +39,8 @@ export default function ProfilePage() {
 
   const fetchSchoolName = async () => {
     console.log('Profile school_id:', profile?.school_id)
+    
+    // Handle case where school_id is null or undefined
     if (!profile?.school_id) {
       console.log('No school_id in profile')
       setSchoolName('No school assigned')
@@ -47,6 +49,8 @@ export default function ProfilePage() {
     
     try {
       console.log('Fetching school for ID:', profile.school_id)
+      
+      // First, verify the school exists
       const { data, error } = await supabase
         .from('schools')
         .select('name')
@@ -55,12 +59,43 @@ export default function ProfilePage() {
         
       if (error) {
         console.error('Error fetching school:', error)
-        throw error
+        
+        // Handle specific error cases
+        if (error.code === 'PGRST116') {
+          // No rows found - school doesn't exist
+          console.warn(`School with ID ${profile.school_id} does not exist`)
+          setSchoolName('Invalid school assignment')
+          
+          // Optionally, update the profile to remove the invalid school_id
+          try {
+            await supabase
+              .from('profiles')
+              .update({ school_id: null })
+              .eq('id', profile.id)
+            console.log('Cleared invalid school_id from profile')
+          } catch (updateError) {
+            console.error('Failed to clear invalid school_id:', updateError)
+          }
+          return
+        }
+        
+        // For other errors, set a generic message
+        setSchoolName('Error loading school')
+        return
       }
+      
+      if (!data) {
+        console.warn('No school data returned')
+        setSchoolName('School not found')
+        return
+      }
+      
       console.log('School data:', data)
       setSchoolName(data.name)
+      
     } catch (error) {
       console.error('Error fetching school name:', error)
+      setSchoolName('Error loading school')
     }
   }
 

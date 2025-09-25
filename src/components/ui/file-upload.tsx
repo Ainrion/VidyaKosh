@@ -4,12 +4,13 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
-import { Upload, File, X, CheckCircle, AlertCircle } from 'lucide-react'
+import { Upload, File, X, CheckCircle, AlertCircle, Download, Eye, Trash2, FileText, Image } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface FileUploadProps {
   onFileSelect: (file: File) => void
   onFileRemove: () => void
+  onFileUpload?: (fileData: any) => void
   acceptedTypes?: string[]
   maxSizeMB?: number
   disabled?: boolean
@@ -19,23 +20,30 @@ interface FileUploadProps {
     name: string
     size: number
     url?: string
+    type?: string
   }
+  uploadEndpoint?: string
+  uploadMetadata?: Record<string, string>
 }
 
 export function FileUpload({
   onFileSelect,
   onFileRemove,
+  onFileUpload,
   acceptedTypes = ['.pdf', '.doc', '.docx', '.txt'],
   maxSizeMB = 10,
   disabled = false,
   className,
   placeholder = "Drag and drop your file here, or click to browse",
-  existingFile
+  existingFile,
+  uploadEndpoint,
+  uploadMetadata
 }: FileUploadProps) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const validateFile = useCallback((file: File): string | null => {
@@ -53,7 +61,63 @@ export function FileUpload({
     return null
   }, [acceptedTypes, maxSizeMB])
 
-  const handleFileSelect = useCallback((file: File) => {
+  const uploadFileToServer = async (file: File) => {
+    if (!uploadEndpoint) return
+
+    setIsUploading(true)
+    setUploadProgress(0)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      // Add metadata if provided
+      if (uploadMetadata) {
+        Object.entries(uploadMetadata).forEach(([key, value]) => {
+          formData.append(key, value)
+        })
+      }
+
+      // Create realistic progress simulation
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          if (prev >= 85) {
+            clearInterval(progressInterval)
+            return 85 // Leave room for final completion
+          }
+          return prev + Math.random() * 15
+        })
+      }, 300)
+
+      const response = await fetch(uploadEndpoint, {
+        method: 'POST',
+        body: formData
+      })
+
+      clearInterval(progressInterval)
+      setUploadProgress(100)
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Upload failed')
+      }
+
+      const result = await response.json()
+      
+      // Small delay to show completion
+      await new Promise(resolve => setTimeout(resolve, 500))
+      
+      return result
+    } catch (error) {
+      console.error('Upload error:', error)
+      throw error
+    } finally {
+      setIsUploading(false)
+      setUploadProgress(0)
+    }
+  }
+
+  const handleFileSelect = useCallback(async (file: File) => {
     setError(null)
     setUploadProgress(0)
 
@@ -63,46 +127,64 @@ export function FileUpload({
       return
     }
 
-    // Set the selected file and start progress simulation
     setSelectedFile(file)
     
-    // Simulate upload progress
-    const progressInterval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(progressInterval)
-          return 100
-        }
-        return prev + 10
-      })
-    }, 100)
-  }, [validateFile])
+    // Call the file select callback
+    onFileSelect(file)
 
-  // Call onFileSelect when upload progress is complete
-  useEffect(() => {
-    if (uploadProgress === 100 && selectedFile) {
-      onFileSelect(selectedFile)
+    // Upload to server if endpoint is provided
+    if (uploadEndpoint && onFileUpload) {
+      try {
+        const result = await uploadFileToServer(file)
+        onFileUpload(result.file || result)
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Upload failed')
+        setSelectedFile(null)
+        onFileRemove()
+      }
     }
-  }, [uploadProgress, selectedFile, onFileSelect])
+  }, [validateFile, onFileSelect, onFileRemove, onFileUpload, uploadEndpoint, uploadMetadata])
+
+  const getFileIcon = (fileName: string, mimeType?: string) => {
+    const extension = fileName.split('.').pop()?.toLowerCase()
+    
+    if (mimeType?.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif'].includes(extension || '')) {
+      return <Image className="h-6 w-6 text-blue-500" />
+    }
+    
+    if (['pdf'].includes(extension || '')) {
+      return <FileText className="h-6 w-6 text-red-500" />
+    }
+    
+    if (['doc', 'docx'].includes(extension || '')) {
+      return <FileText className="h-6 w-6 text-blue-600" />
+    }
+
+    if (['xls', 'xlsx'].includes(extension || '')) {
+      return <FileText className="h-6 w-6 text-green-600" />
+    }
+    
+    return <File className="h-6 w-6 text-gray-500" />
+  }
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragOver(false)
 
-    if (disabled) return
+    if (disabled || isUploading) return
 
     const files = Array.from(e.dataTransfer.files)
     if (files.length > 0) {
       handleFileSelect(files[0])
     }
-  }, [disabled, handleFileSelect])
+  }, [disabled, isUploading, handleFileSelect])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
-    if (!disabled) {
+    if (!disabled && !isUploading) {
       setIsDragOver(true)
     }
-  }, [disabled])
+  }, [disabled, isUploading])
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -110,10 +192,10 @@ export function FileUpload({
   }, [])
 
   const handleClick = useCallback(() => {
-    if (!disabled) {
+    if (!disabled && !isUploading) {
       fileInputRef.current?.click()
     }
-  }, [disabled])
+  }, [disabled, isUploading])
 
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -152,7 +234,7 @@ export function FileUpload({
         <Card className="p-4 border-green-200 bg-green-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <CheckCircle className="h-5 w-5 text-green-600" />
+              {getFileIcon(existingFile?.name || selectedFile?.name || '', existingFile?.type)}
               <div>
                 <p className="font-medium text-green-800">
                   {existingFile?.name || selectedFile?.name}
@@ -164,22 +246,40 @@ export function FileUpload({
             </div>
             <div className="flex items-center gap-2">
               {existingFile?.url && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => window.open(existingFile.url, '_blank')}
-                >
-                  View
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(existingFile.url, '_blank')}
+                    className="text-blue-700 border-blue-300 hover:bg-blue-100"
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    Preview
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const link = document.createElement('a')
+                      link.href = existingFile.url!
+                      link.download = existingFile.name
+                      link.click()
+                    }}
+                    className="text-green-700 border-green-300 hover:bg-green-100"
+                  >
+                    <Download className="h-4 w-4 mr-1" />
+                    Download
+                  </Button>
+                </>
               )}
               <Button
-                variant="ghost"
+                variant="outline"
                 size="sm"
                 onClick={handleFileRemove}
-                disabled={disabled}
-                className="text-red-600 hover:text-red-700"
+                disabled={disabled || isUploading}
+                className="text-red-700 border-red-300 hover:bg-red-100"
               >
-                <X className="h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -188,10 +288,10 @@ export function FileUpload({
         <Card
           className={cn(
             "border-2 border-dashed transition-colors cursor-pointer",
-            isDragOver && !disabled
+            isDragOver && !disabled && !isUploading
               ? "border-blue-400 bg-blue-50"
               : "border-gray-300 hover:border-gray-400",
-            disabled && "opacity-50 cursor-not-allowed",
+            (disabled || isUploading) && "opacity-50 cursor-not-allowed",
             error && "border-red-300 bg-red-50"
           )}
           onDrop={handleDrop}
@@ -206,13 +306,13 @@ export function FileUpload({
                 <p className="text-red-600 font-medium">Upload Error</p>
                 <p className="text-sm text-red-500">{error}</p>
               </div>
-            ) : uploadProgress > 0 && uploadProgress < 100 ? (
+            ) : isUploading || (uploadProgress > 0 && uploadProgress < 100) ? (
               <div className="space-y-4">
                 <Upload className="h-8 w-8 text-blue-500 mx-auto animate-pulse" />
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Uploading...</p>
                   <Progress value={uploadProgress} className="w-full" />
-                  <p className="text-xs text-gray-500">{uploadProgress}%</p>
+                  <p className="text-xs text-gray-500">{Math.round(uploadProgress)}%</p>
                 </div>
               </div>
             ) : (

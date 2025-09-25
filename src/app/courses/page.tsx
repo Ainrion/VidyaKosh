@@ -60,10 +60,12 @@ export default function CoursesPage() {
         .eq('archived', false)
         .order('created_at', { ascending: false })
 
-      // Filter based on user role
+      // Filter based on user role (maintaining school isolation)
       if (profile.role === 'teacher') {
-        query = query.or(`created_by.eq.${profile.id}`)
+        // Teachers can only see their own courses within their school
+        query = query.eq('created_by', profile.id)
       }
+      // Admins and students will see all courses in their school (already filtered by school_id above)
 
       const { data, error } = await query
 

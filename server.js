@@ -3,6 +3,34 @@ import { parse } from 'url'
 import next from 'next'
 import { Server as SocketIOServer } from 'socket.io'
 import { createClient } from '@supabase/supabase-js'
+import { readFileSync } from 'fs'
+import { fileURLToPath } from 'url'
+import { dirname, join } from 'path'
+
+// Load environment variables from .env.local
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+try {
+  const envPath = join(__dirname, '.env.local')
+  const envContent = readFileSync(envPath, 'utf8')
+  
+  // Parse .env.local file
+  envContent.split('\n').forEach(line => {
+    line = line.trim()
+    if (line && !line.startsWith('#')) {
+      const [key, ...valueParts] = line.split('=')
+      if (key && valueParts.length > 0) {
+        process.env[key.trim()] = valueParts.join('=').trim()
+      }
+    }
+  })
+  
+  console.log('✅ Environment variables loaded from .env.local')
+} catch (error) {
+  console.error('❌ Failed to load .env.local file:', error.message)
+  console.log('Please ensure .env.local exists with your Supabase configuration')
+}
 
 const dev = process.env.NODE_ENV !== 'production'
 const hostname = 'localhost'
@@ -12,11 +40,21 @@ const port = process.env.SOCKET_PORT || 3001 // Use environment variable or defa
 // const app = next({ dev, hostname, port })
 // const handle = app.getRequestHandler()
 
+// Validate required environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error('❌ Missing required Supabase environment variables:')
+  console.error('   NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✅' : '❌')
+  console.error('   SUPABASE_SERVICE_ROLE_KEY:', supabaseServiceKey ? '✅' : '❌')
+  console.error('Please check your .env.local file and ensure these variables are set.')
+  process.exit(1)
+}
+
 // Initialize Supabase client for server-side operations
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-)
+const supabase = createClient(supabaseUrl, supabaseServiceKey)
+console.log('✅ Supabase client initialized successfully')
 
 // Create a simple HTTP server for Socket.IO only
 const server = createServer((req, res) => {
