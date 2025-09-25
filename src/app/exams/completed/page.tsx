@@ -38,6 +38,14 @@ export default function CompletedExamsPage() {
   const fetchCompletedExams = useCallback(async () => {
     try {
       setLoading(true)
+      
+      // First check if the user has permission and school_id
+      if (!profile || !profile.school_id) {
+        console.log('No profile or school_id found, skipping completed exams fetch')
+        setCompletedExams([])
+        return
+      }
+      
       const { data, error } = await supabase
         .from('exam_sessions')
         .select(`
@@ -46,10 +54,12 @@ export default function CompletedExamsPage() {
             title,
             description,
             duration_minutes,
-            courses (title)
+            school_id,
+            courses (title, school_id)
           )
         `)
         .eq('student_id', profile?.id)
+        .eq('exams.school_id', profile.school_id) // Ensure exams belong to student's school
         .neq('status', 'in_progress')
         .order('submitted_at', { ascending: false })
 
@@ -60,7 +70,7 @@ export default function CompletedExamsPage() {
     } finally {
       setLoading(false)
     }
-  }, [profile?.id, supabase])
+  }, [profile?.id, profile?.school_id, supabase])
 
   useEffect(() => {
     if (profile) {

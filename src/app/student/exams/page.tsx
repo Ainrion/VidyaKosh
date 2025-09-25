@@ -37,36 +37,63 @@ export default function StudentExamsPage() {
     try {
       setLoading(true)
       
-      // Get exams from courses the student is enrolled in
+      // First check if the user has permission and school_id
+      if (!profile || !profile.school_id) {
+        console.log('No profile or school_id found, skipping exam fetch')
+        setAvailableExams([])
+        return
+      }
+      
+      console.log('Fetching exams for student:', profile.id, 'school:', profile.school_id)
+      
+      // Get exams from courses the student is enrolled in WITH school_id filtering
       const { data: enrolledCourses, error: enrollmentError } = await supabase
         .from('enrollments')
-        .select('course_id')
+        .select(`
+          course_id,
+          courses!inner (id, school_id, title)
+        `)
         .eq('student_id', profile?.id)
+        .eq('courses.school_id', profile.school_id) // Ensure student and courses are in same school
 
       if (enrollmentError) throw enrollmentError
 
+      console.log('Enrolled courses:', enrolledCourses)
       const courseIds = enrolledCourses.map(e => e.course_id)
 
       if (courseIds.length === 0) {
+        console.log('No enrolled courses found for student')
         setAvailableExams([])
         return
       }
 
-      // Fetch exams from enrolled courses
+      console.log('Course IDs for exam fetch:', courseIds)
+
+      // Fetch exams from enrolled courses with school_id filtering
       const { data: examsData, error: examsError } = await supabase
         .from('exams')
         .select(`
           *,
-          courses (title),
-          exam_sessions!left (id, status)
+          courses (title, school_id),
+          exam_sessions!left (id, status, student_id)
         `)
         .in('course_id', courseIds)
         .eq('is_published', true)
-        .eq('exam_sessions.student_id', profile?.id)
+        .eq('school_id', profile.school_id) // Ensure exams belong to student's school
         .order('created_at', { ascending: false })
 
       if (examsError) throw examsError
-      setAvailableExams(examsData || [])
+      
+      console.log('Fetched exams:', examsData)
+      
+      // Filter exam sessions for this student
+      const filteredExams = examsData?.map(exam => ({
+        ...exam,
+        exam_sessions: exam.exam_sessions?.filter((session: any) => session.student_id === profile.id) || []
+      })) || []
+      
+      console.log('Filtered exams with sessions:', filteredExams)
+      setAvailableExams(filteredExams)
     } catch (error) {
       console.error('Error fetching available exams:', error)
     } finally {

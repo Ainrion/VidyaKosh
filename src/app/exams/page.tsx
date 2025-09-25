@@ -224,7 +224,9 @@ export default function ExamsPage() {
         ...examForm,
         start_time: examForm.start_time && examForm.start_time.trim() !== '' ? examForm.start_time : null,
         end_time: examForm.end_time && examForm.end_time.trim() !== '' ? examForm.end_time : null,
-        created_by: profile?.id
+        created_by: profile?.id,
+        school_id: profile?.school_id,
+        is_published: true // Ensure exams are published by default
       }
 
       console.log('Saving exam with data:', examData)

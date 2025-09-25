@@ -579,6 +579,7 @@ export interface Database {
           end_time: string | null
           is_published: boolean
           created_by: string | null
+          school_id: string | null
           created_at: string
           updated_at: string
         }
@@ -592,6 +593,7 @@ export interface Database {
           end_time?: string | null
           is_published?: boolean
           created_by?: string | null
+          school_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -605,6 +607,7 @@ export interface Database {
           end_time?: string | null
           is_published?: boolean
           created_by?: string | null
+          school_id?: string | null
           created_at?: string
           updated_at?: string
         }

@@ -74,18 +74,34 @@ export default function TakeExamPage() {
     try {
       setLoading(true)
 
-      // Fetch exam details
+      // First check if the user has permission and school_id
+      if (!profile || !profile.school_id) {
+        toast.error('Access denied: No school access')
+        router.push('/courses')
+        return
+      }
+
+      // Fetch exam details with school_id filtering
       const { data: examData, error: examError } = await supabase
         .from('exams')
         .select(`
           *,
-          courses (title)
+          courses (title, school_id)
         `)
         .eq('id', examId)
         .eq('is_published', true)
+        .eq('school_id', profile.school_id) // Ensure exam belongs to student's school
         .single()
 
       if (examError) throw examError
+      
+      // Additional security check: ensure the course also belongs to the same school
+      if (examData.courses?.school_id !== profile.school_id) {
+        toast.error('Access denied: Exam belongs to a different school')
+        router.push('/courses')
+        return
+      }
+      
       setExam(examData)
 
       // Check if exam is available (time window)
